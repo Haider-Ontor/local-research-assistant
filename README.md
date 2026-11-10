@@ -4,8 +4,32 @@ A private, offline "ChatPDF" for your research library. It reads every PDF in yo
 papers folder, answers questions with citations to the exact paper and page, explains what the papers mean, writes
 study guides, finds and explains tables and figures, and formats references in IEEE, Harvard, APA 7, BibTeX and
 LaTeX (IEEE and Elsevier templates).
-The AI runs on your own GPU - any local GGUF model you choose (Qwen 3.5 9B by default). Nothing leaves your computer
-except metadata lookups on Crossref/arXiv for PDFs that aren't in Zotero.
+The AI runs on your own computer - any open GGUF model, which the app suggests, downloads and sets up for you
+(Qwen 3.5, Gemma 4, Mistral, GLM, gpt-oss and thousands more from Hugging Face). Nothing you read or ask leaves your
+computer; the only internet use is downloading the engine and models, and metadata lookups on Crossref/arXiv for
+PDFs that aren't in Zotero.
+
+## Download and install (Windows 10/11)
+1. **Download** the latest release: on GitHub, **Releases → Research Assistant vX → `ResearchAssistant.zip`** (or
+   **Code → Download ZIP**).
+2. **Extract** it to a folder of your choice that OneDrive doesn't sync - for example `C:\ResearchAssistant` (the AI
+   models are several GB).
+3. **Double-click `Start Research Assistant.bat`.** If Windows says "Windows protected your PC", click *More info →
+   Run anyway* (it's a short script you can open in Notepad to read).
+   - The first time, it installs Python and the app's libraries **inside that folder** (about 400 MB, 1-2 minutes;
+     nothing is installed anywhere else) and puts a shortcut on your desktop.
+   - Then the app opens in your browser with a **setup page**: it shows what your computer has (graphics card,
+     memory), asks for your papers folder, and **suggests the AI model that suits your computer**. Press
+     **Download and set up**: the AI engine (llama.cpp, the right build for your graphics card), the search model and
+     the AI model download in the background (resumable, each file checked against its published checksum), then
+     your papers are indexed and you can start asking.
+4. **Next time:** the desktop shortcut. Everything stays in that folder; to uninstall, delete the folder and the
+   shortcut.
+
+**What it needs:** Windows 10 or 11 (64-bit), an internet connection for the first setup, and disk space for the
+model you pick (1-20 GB; about 7 GB for the suggested model on an 8 GB graphics card). A graphics card is optional:
+NVIDIA cards use the CUDA engine, AMD and Intel cards the Vulkan engine, and without one the AI runs on the processor
+(slower; the app then suggests a small model). Zotero is optional.
 
 PDFs are read as layout-aware Markdown (pymupdf4llm): two-column pages in the right order, tables as real
 tables (every value under its column), section headings kept with each passage, page numbers kept for citing.
@@ -19,6 +43,27 @@ tables (every value under its column), section headings kept with each passage, 
 - **Nothing runs in the background.** The app starts its own AI engine (llama.cpp, in the `engine` folder)
   and Windows shuts it down with the app. LM Studio is not needed (its downloaded models can be used, though).
 - The app only accepts connections from this computer, not from other devices on your Wi-Fi.
+
+## Getting more models: the 🧠 Models tab
+- **This computer** - graphics card, memory, processor, and the AI engine build that suits them (cuda-13 or cuda-12
+  for NVIDIA, vulkan for AMD/Intel, cpu without a graphics card). You can install or switch the engine here.
+- **Suggested for this computer** - a curated list of open models (Qwen 3.5, Gemma 4, Ministral 3, GLM-4.6V,
+  Qwen3-VL, gpt-oss, Phi-4, …), each with the **best version that runs fully on your computer** (Q6_K, Q5_K_M,
+  Q4_K_M, … - smaller versions need less memory and are a little less accurate). ⭐ marks the app's suggestion;
+  **Download**, then **Use it**. Toggle 👁 Vision off to see text-only models too.
+- **Any model from Hugging Face** - search by name, or paste a link to a model page or file. The app lists the
+  versions with a rough fit, and **🔍 Work out exactly how it runs** reads the model's description (its first ~10 MB,
+  not the whole file) to tell you precisely which versions fit, how much text they can read at once, whether they can
+  look at figures and whether they think before answering. Gated models (e.g. Llama) need you to accept their licence
+  on Hugging Face and add an access token (🔑).
+- **Downloads** run in the background while you keep working, pick up where they stopped if the connection drops,
+  and are checked against Hugging Face's checksums. Models go into `models\<publisher>\<model>\`.
+
+How the suggestion is made: each model's memory use is worked out from its layout (layers, attention cache, what
+stays in normal memory, the vision part) for your graphics card's memory; the versions that run fully on the card
+are kept; then models are ordered by a rough quality rank for reading papers (bigger and newer first, a small
+bonus for models tested with this app), plus the version's quality. Without a graphics card, smaller models are
+preferred because the processor is slower. Maintainers refresh the list with `tools\update_catalog.py`.
 
 ## Choosing the AI model
 Sidebar → **🧠 AI model** lists every chat model on your computer: the `.gguf` files in the app's `models` folder, in
@@ -133,48 +178,31 @@ page to look at - equations are clearest on the page itself), results, limitatio
   mode and for study guides), `CHAT_MODEL_NAME` (the model used until you pick one in the app).
 - Restart the app after a change.
 
-## Setup on a new computer
-Needs Windows 10/11, an NVIDIA GPU (8 GB for a 9B model; an RTX 5060 Laptop GPU was used for testing; smaller models
-run on smaller GPUs), Python 3.13, and about 7 GB of disk for the engine and models. Zotero and Microsoft Word are
-optional.
-
-1. **Code and Python packages** - in a terminal:
-   ```
-   git clone https://github.com/Haider-Ontor/local-research-assistant.git ResearchAssistant
-   cd ResearchAssistant
-   py -3.13 -m venv .venv
-   .venv\Scripts\python -m pip install -r requirements.txt
-   ```
-2. **AI engine** - from [llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases) download the Windows
-   CUDA build (`llama-<build>-bin-win-cuda-13.x-x64.zip`) and the matching `cudart-llama-bin-win-cuda-13.x-x64.zip`,
-   and extract both into a folder named `engine` here, so that `engine\llama-server.exe` exists.
-   Tested with build b11899.
-3. **Models** (`.gguf` files):
-   - **a chat model** - any GGUF chat model. Recommended: Qwen3.5-9B **Q4_K_M** (for example from
-     [unsloth/Qwen3.5-9B-GGUF](https://huggingface.co/unsloth/Qwen3.5-9B-GGUF) or
-     [bartowski/Qwen_Qwen3.5-9B-GGUF](https://huggingface.co/bartowski/Qwen_Qwen3.5-9B-GGUF)), plus its vision file
-     (`mmproj-….gguf`, same page) in the same folder if you want figure explanations. Put them in a folder named
-     `models` here - or just download them in **LM Studio**: its models are found automatically. The first start
-     uses the biggest model that fits your GPU; pick another under 🧠 AI model.
-   - **the search model** `nomic-embed-text-v1.5.Q4_K_M.gguf` from
-     [nomic-ai/nomic-embed-text-v1.5-GGUF](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF), into the
-     `models` folder.
-4. **Your settings** - copy `local_settings.example.py` to `local_settings.py` and set your papers folder
-   and a few lines about your research.
-5. **Start** - double-click `Start Research Assistant.bat`. The first start indexes every paper (a few seconds per
-   PDF). For a Desktop shortcut: right-click the .bat → Send to → Desktop, then give it `icon.ico`.
+## Installing from the source code (developers)
+`git clone https://github.com/Haider-Ontor/local-research-assistant.git`, then double-click
+`Start Research Assistant.bat` as above - `tools\install.ps1` gets [uv](https://github.com/astral-sh/uv), which
+installs Python 3.13 and `requirements.txt` into `.venv`. With your own Python 3.13 instead:
+`py -3.13 -m venv .venv` and `.venv\Scripts\python -m pip install -r requirements.txt`. The app's setup page
+downloads the rest. To set things up by hand instead: extract a llama.cpp Windows build (tested: b11899) into
+`engine\`, put `nomic-embed-text-v1.5.Q4_K_M.gguf` and any GGUF chat model in `models\` (LM Studio's models are
+found automatically), and copy `local_settings.example.py` to `local_settings.py`.
 
 ## What is not in this repository
 Only the code is on GitHub. These stay on your computer (see `.gitignore`):
 `local_settings.py` (your folders and research context) · `data\` (the search index with text from your papers,
-the Zotero database copy, your bibliography, your model choice, engine logs) ·
-`engine\` and `models\` (large downloads, see above) · `.venv\`.
+the Zotero database copy, your bibliography, your model choice, a Hugging Face token if you added one, engine logs) ·
+`engine\` and `models\` (large downloads) · `.venv\`, `tools\uv\` and `tools\python\` (Python, installed on first
+start).
 
 ## Files
-`app.py` (interface) · `rag.py` (search, answers, guides, page images, number check) · `indexer.py` (PDF
-processing) · `figures.py` (tables and figures) · `models.py` (finding models, GPU memory estimates) ·
-`library.py` (Zotero, Crossref, arXiv) · `citations.py` (citation styles, LaTeX/BibTeX) · `services.py` (AI engine) · `start.py` (startup) · `config.py` (defaults) ·
-`local_settings.example.py` (template for your own settings) · `data\index.db` (the index; delete it to rebuild) ·
+`app.py` (interface) · `ui_setup.py` (setup page and 🧠 Models tab) · `rag.py` (search, answers, guides, page images,
+number check) · `indexer.py` (PDF processing) · `figures.py` (tables and figures) · `models.py` (finding models,
+GPU memory estimates) · `hardware.py` (graphics card, memory, engine build) · `catalog.py` + `catalog.json`
+(suggested models) · `hub.py` (Hugging Face) · `downloads.py` (background downloads, engine install) ·
+`firstrun.py` (first start) · `library.py` (Zotero, Crossref, arXiv) · `citations.py` (citation styles,
+LaTeX/BibTeX) · `services.py` (AI engine) · `start.py` (startup) · `config.py` (defaults) ·
+`local_settings.example.py` (template for your own settings) · `tools\install.ps1` (installs Python and the
+libraries) · `tools\update_catalog.py` (rebuilds catalog.json) · `data\index.db` (the index; delete it to rebuild) ·
 `data\bibliography.json` (your reference list) · `data\engine-*.log` (engine logs).
 
 ## Licence

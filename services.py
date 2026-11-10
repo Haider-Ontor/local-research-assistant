@@ -95,7 +95,8 @@ def _server_args(kind):
                 vision.append("--no-mmproj-offload")          # vision encoder on the CPU, to leave the GPU to the model
         # whole model on the GPU when it fits; otherwise the engine works out how many layers fit (the rest runs on
         # the CPU), keeping 512 MB free for the search model
-        gpu = ["-ngl", "999"] if p["ngl"] == "999" else ["--fit", "on", "--fit-target", "512"]
+        gpu = (["-ngl", "999"] if p["ngl"] == "999" else ["-ngl", "0"] if p["fit"] == "cpu"
+               else ["--fit", "on", "--fit-target", "512"])
         return [exe, "-m", str(config.CHAT_MODEL_FILE), "--alias", config.CHAT_MODEL, "--port", str(config.CHAT_PORT),
                 "--jinja", "-c", str(p["ctx"]), "-np", "1", "-fa", "on",
                 "--reasoning-budget", str(config.REASONING_BUDGET),
@@ -119,14 +120,16 @@ def ensure_llm(log=print, timeout=240):
         return
     import models
     if not (config.ENGINE_DIR / "llama-server.exe").exists():
-        raise RuntimeError(f"The AI engine is missing from {config.ENGINE_DIR} (see README, 'Setup on a new computer').")
+        raise RuntimeError(f"The AI engine isn't installed yet ({config.ENGINE_DIR}): open the app and use its "
+                           "first-run setup, or the 🧠 Models tab, to download it.")
     if not config.EMBED_MODEL_FILE.exists():
-        raise RuntimeError(f"The search model is missing: {config.EMBED_MODEL_FILE} (see README).")
+        raise RuntimeError(f"The search model isn't downloaded yet ({config.EMBED_MODEL_FILE.name}): open the app and "
+                           "use its first-run setup, or the 🧠 Models tab.")
     if not config.CHAT_MODEL_FILE.exists():                   # first start, or the chosen file was moved
         pick = models.best_default(models.scan())
         if not pick:
-            raise RuntimeError("No AI model found. Put a GGUF chat model (for example Qwen3.5-9B Q4_K_M) in the "
-                               f"{config.MODELS_DIR} folder, or download one in LM Studio (see README).")
+            raise RuntimeError("No AI model found. Download one in the app's 🧠 Models tab (it suggests one that fits "
+                               f"this computer), or put a GGUF chat model in {config.MODELS_DIR}.")
         log(f"{config.CHAT_MODEL_FILE.name} isn't there - using {models.short(pick)} instead "
             "(pick another one under 🧠 AI model in the app's sidebar).")
         models.apply(pick["path"], config.VISION_ON)
@@ -141,7 +144,8 @@ def ensure_llm(log=print, timeout=240):
                 time.sleep(0.5)
         m, p = chat_plan()
         log(f"Loading {models.short(m) if m else config.CHAT_MODEL_FILE.name} ({p['ctx']:,} tokens"
-            + (", vision" if p["mmproj"] else "") + (", partly on the CPU" if p["ngl"] != "999" else "") + ")…")
+            + (", vision" if p["mmproj"] else "")
+            + (", on the processor" if p["fit"] == "cpu" else ", partly on the CPU" if p["ngl"] != "999" else "") + ")…")
         _start("chat", args)
     log("Loading the AI models…")
     t0 = time.time()

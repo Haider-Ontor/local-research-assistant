@@ -33,7 +33,8 @@ def model_options():
     if "--list-models" in args:
         found = models.scan(refresh=True)
         if not found:
-            print("No models found. Put a GGUF chat model in", config.MODELS_DIR, "or download one in LM Studio.")
+            print("No models found. Download one in the app's 🧠 Models tab, or put a GGUF chat model in",
+                  config.MODELS_DIR)
         for m in found:
             print(f"\n{models.label(m)}\n  {m['path']}")
             for line in models.explain(m, models.plan(m)):
@@ -64,15 +65,20 @@ def main():
         print("Already running - opening it in your browser.")
         webbrowser.open(URL)
         return
-    try:
-        services.ensure_llm()
-    except Exception as e:
-        print("WARNING: the AI engine didn't start -", e, "\n(Search still works; answers need the engine.)")
-    print("\nChecking for new or changed papers…")
-    try:
-        indexer.update_index()
-    except Exception as e:
-        print("WARNING: index not updated -", e)
+    import firstrun
+    if firstrun.pending() or not firstrun.complete():
+        print("First start: the app opens in your browser and sets itself up - your papers folder, and downloading\n"
+              "the AI engine and an AI model that suits this computer.")
+    else:
+        try:
+            services.ensure_llm()
+        except Exception as e:
+            print("WARNING: the AI engine didn't start -", e, "\n(Search still works; answers need the engine.)")
+        print("\nChecking for new or changed papers…")
+        try:
+            indexer.update_index()
+        except Exception as e:
+            print("WARNING: index not updated -", e)
     print("\nStarting the app…")
     proc = subprocess.Popen([sys.executable, "-m", "streamlit", "run", str(config.APP_DIR / "app.py"),
                              "--server.port", str(config.APP_PORT), "--server.address", "127.0.0.1",

@@ -2,7 +2,7 @@
 import html, json, os, re, sqlite3, threading, time
 import pandas as pd
 import streamlit as st
-import config, citations, figures, indexer, models, rag, services
+import config, citations, downloads, figures, firstrun, indexer, models, rag, services, ui_setup
 from rag import page_label, printed_page, short_authors
 
 st.set_page_config(page_title="Research Assistant", page_icon="📚", layout="wide")
@@ -67,7 +67,7 @@ def idle_watchdog():
                 n = Runtime.instance()._session_mgr.num_active_sessions()
             except Exception:
                 continue
-            if n:
+            if n or downloads.active():          # never quit in the middle of a download
                 idle_since = None
             elif idle_since is None:
                 idle_since = time.time()
@@ -183,6 +183,12 @@ ss.setdefault("messages", [])
 ss.setdefault("bib", load_bib())          # list of file paths, in the order added
 ss.setdefault("style", config.DEFAULT_STYLE)
 ss.setdefault("focus_papers", [])
+
+# First start on this computer (or a setup still downloading): the setup page instead of the app
+if firstrun.pending() or not firstrun.complete():
+    ui_setup.first_run_page()
+    st.stop()
+
 
 @st.cache_resource
 def ensure_schema():
@@ -595,8 +601,8 @@ def model_picker(up):
     cur = models.find(found, engine_now["path"] if engine_now else config.CHAT_MODEL_FILE)
     with st.expander(f"🧠 AI model · {models.short(cur) if cur else config.CHAT_MODEL}", expanded=False):
         if not found:
-            st.warning("No AI models found. Put a GGUF chat model in the models folder (or set MODEL_DIRS in "
-                       "local_settings.py), or download one in LM Studio, then press Look again.", icon="🔍")
+            st.warning("No AI models found. Download one in the 🧠 Models tab (it suggests one that fits this "
+                       "computer), or put a GGUF chat model in the models folder, then press Look again.", icon="🔍")
         else:
             idx_ = found.index(cur) if cur in found else 0
             i = st.selectbox("Answers, study guides and figure explanations use", range(len(found)), index=idx_,
@@ -635,7 +641,14 @@ def model_picker(up):
             model_list.clear()
             st.rerun()
         st.caption("Searching your papers always uses nomic-embed, so your index stays valid whichever model you "
-                   "pick. Your choice is remembered for next time.")
+                   "pick. Your choice is remembered for next time. More models: the 🧠 Models tab.")
+
+
+def models_changed():
+    """After a download or a switch in the 🧠 Models tab."""
+    models.scan(refresh=True)
+    for f in (model_list, running_model, server_ok, vision_ok):
+        f.clear()
 
 
 # ---------------------------------------------------------------- sidebar
@@ -659,6 +672,7 @@ with st.sidebar:
                 except Exception as e:
                     st.error(str(e))
     model_picker(up)
+    ui_setup.sidebar_note()
     gp = gpu_problem()
     if gp:
         with st.expander("⚠️ Running on CPU (slow)", expanded=False):
@@ -739,7 +753,14 @@ if not papers:
     st.info("Your library is still being indexed, or no PDFs were found yet. Click **🔄 Check for new papers** "
             f"in the sidebar once indexing has finished. New PDFs go in: `{config.PAPERS_DIR}`")
 
-tab_ask, tab_find, tab_lib, tab_bib = st.tabs(["💬 Ask", "🔎 Find", "📚 Library", f"🧾 Bibliography ({len(ss.bib)})"])
+tab_ask, tab_find, tab_lib, tab_bib, tab_models = st.tabs(
+    ["💬 Ask", "🔎 Find", "📚 Library", f"🧾 Bibliography ({len(ss.bib)})", "🧠 Models"])
+
+with tab_models:
+    try:
+        ui_setup.models_tab(models_changed)
+    except Exception as e:          # never let this tab break the rest of the app
+        st.error(f"This tab ran into a problem: {e}")
 
 # ---------------------------------------------------------------- Ask
 with tab_ask:

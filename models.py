@@ -57,53 +57,57 @@ def _cpu_bytes(f, n_tensors, alignment, file_size):
 def read_gguf(path, tensors=False):
     """The key/value header of a GGUF file (no weights are read). Long arrays such as the vocabulary are skipped.
     tensors=True also adds '_cpu_bytes': the size of the tensors that stay in normal memory."""
-    out = {}
     with open(path, "rb") as f:
-        if f.read(4) != b"GGUF":
-            return None
-        version, = struct.unpack("<I", f.read(4))
-        if version < 2:
-            return None
-        n_tensors, n_kv = struct.unpack("<QQ", f.read(16))
+        return parse_header(f, tensors, os.path.getsize(path), split=bool(_SPLIT.search(Path(path).name)))
 
-        def string():
-            n, = struct.unpack("<Q", f.read(8))
-            return f.read(n).decode("utf-8", "replace")
 
-        for _ in range(n_kv):
-            key = string()
-            t, = struct.unpack("<I", f.read(4))
-            if t == 8:
-                val = string()
-            elif t == 9:
-                at, n = struct.unpack("<IQ", f.read(12))
-                if at == 8:
-                    if n > 512:
-                        for _ in range(n):
-                            f.seek(struct.unpack("<Q", f.read(8))[0], 1)
-                        val = None
-                    else:
-                        val = [string() for _ in range(n)]
-                elif at in _SIZE:
-                    if n > 512:
-                        f.seek(_SIZE[at] * n, 1)
-                        val = None
-                    else:
-                        val = [struct.unpack(_FMT[at], f.read(_SIZE[at]))[0] for _ in range(n)]
+def parse_header(f, tensors=False, file_size=0, split=False):
+    """read_gguf() on any file-like object with read/seek/tell (a local file, or hub.HttpFile for a file online)."""
+    out = {}
+    if f.read(4) != b"GGUF":
+        return None
+    version, = struct.unpack("<I", f.read(4))
+    if version < 2:
+        return None
+    n_tensors, n_kv = struct.unpack("<QQ", f.read(16))
+
+    def string():
+        n, = struct.unpack("<Q", f.read(8))
+        return f.read(n).decode("utf-8", "replace")
+
+    for _ in range(n_kv):
+        key = string()
+        t, = struct.unpack("<I", f.read(4))
+        if t == 8:
+            val = string()
+        elif t == 9:
+            at, n = struct.unpack("<IQ", f.read(12))
+            if at == 8:
+                if n > 512:
+                    for _ in range(n):
+                        f.seek(struct.unpack("<Q", f.read(8))[0], 1)
+                    val = None
                 else:
-                    return out                        # nested arrays: nothing we need comes after them
-            elif t in _FMT:
-                val, = struct.unpack(_FMT[t], f.read(_SIZE[t]))
+                    val = [string() for _ in range(n)]
+            elif at in _SIZE:
+                if n > 512:
+                    f.seek(_SIZE[at] * n, 1)
+                    val = None
+                else:
+                    val = [struct.unpack(_FMT[at], f.read(_SIZE[at]))[0] for _ in range(n)]
             else:
-                return out
-            if val is not None:
-                out[key] = val
-        if tensors and not _SPLIT.search(Path(path).name):
-            try:
-                out["_cpu_bytes"] = _cpu_bytes(f, n_tensors, int(out.get("general.alignment") or 32),
-                                               os.path.getsize(path))
-            except Exception:
-                pass
+                return out                        # nested arrays: nothing we need comes after them
+        elif t in _FMT:
+            val, = struct.unpack(_FMT[t], f.read(_SIZE[t]))
+        else:
+            return out
+        if val is not None:
+            out[key] = val
+    if tensors and not split:
+        try:
+            out["_cpu_bytes"] = _cpu_bytes(f, n_tensors, int(out.get("general.alignment") or 32), file_size)
+        except Exception:
+            pass
     return out
 
 
@@ -121,8 +125,11 @@ def _file_size(path):
 def describe(path):
     """What kind of GGUF file this is and what's needed to run it."""
     md = read_gguf(path, tensors=True)
-    if not md:
-        return None
+    return describe_header(md, str(path), _file_size(path)) if md else None
+
+
+def describe_header(md, path, size):
+    """describe() from an already-read header (`path` may be a URL; `size` = total bytes, all parts)."""
     arch = md.get("general.architecture", "")
     g = lambda k, d=None: md.get(f"{arch}.{k}", d)
     gtype = md.get("general.type", "model")
@@ -140,14 +147,15 @@ def describe(path):
     k_len = g("attention.key_length") or (emb // heads if heads else 128)
     quant = QUANTS.get(md.get("general.file_type"))
     if not quant:
-        m = _QUANT_RE.search(Path(path).stem)
+        m = _QUANT_RE.search(_SPLIT.sub("", Path(str(path).split("?")[0]).name).replace(".gguf", ""))
         quant = m.group(0)[1:].upper() if m else ""
     return {
-        "path": str(path), "size": _file_size(path), "cpu_bytes": md.get("_cpu_bytes", 0), "arch": arch, "kind": kind,
+        "path": str(path), "size": size, "cpu_bytes": md.get("_cpu_bytes", 0), "arch": arch, "kind": kind,
         "basename": (md.get("general.basename") or "").lower(),
         "params": md.get("general.size_label") or "", "quant": quant,
         "ctx_train": int(g("context_length") or 0), "embed": emb,
-        "thinking": "switchable" if "enable_thinking" in tmpl else "always" if "<think>" in tmpl else "none",
+        "thinking": "switchable" if "enable_thinking" in tmpl else
+                    "always" if "<think>" in tmpl or "reasoning_effort" in tmpl else "none",
         "kv": {"layers": int(g("block_count") or 0), "heads_kv": g("attention.head_count_kv") or heads,
                "k": k_len, "v": g("attention.value_length") or k_len,
                "k_swa": g("attention.key_length_swa"), "v_swa": g("attention.value_length_swa"),
@@ -334,17 +342,19 @@ _GPU = {}
 
 
 def gpu():
-    """{'name', 'total'} of the first NVIDIA GPU (MiB), or None."""
+    """{'name', 'total' (MiB), ...} of the graphics card the AI runs on, or None (see hardware.detect)."""
     if "v" not in _GPU:
-        try:
-            out = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-                                 capture_output=True, text=True, timeout=10,
-                                 creationflags=0x08000000 if os.name == "nt" else 0).stdout.strip().splitlines()
-            name, total = out[0].rsplit(",", 1)
-            _GPU["v"] = {"name": name.strip().replace("NVIDIA ", ""), "total": int(total)}
-        except Exception:
-            _GPU["v"] = None
+        import hardware
+        engine = Path(config.ENGINE_DIR)
+        cpu_engine = engine.exists() and not any(engine.glob("ggml-cuda*.dll")) and not any(engine.glob("ggml-vulkan*.dll"))
+        _GPU["v"] = None if cpu_engine else hardware.detect()["gpu"]      # a CPU-only engine can't use the GPU
     return _GPU["v"]
+
+
+def ram():
+    """This computer's memory in GB."""
+    import hardware
+    return hardware.detect()["ram"]
 
 
 def kv_mib(m, ctx):
@@ -377,16 +387,18 @@ def estimate(m, ctx, vision_on_gpu):
 def plan(m, vision=True):
     """How to run a model on this computer: context size, vision on GPU or CPU, all layers on the GPU or not.
     fit: 'ok', 'tight', 'cpu-vision' (vision encoder on the CPU to make room), 'too-big' (part of the model runs on the
-    CPU - slow), 'unknown' (no NVIDIA GPU found)."""
+    CPU - slow; or, without a GPU, it doesn't fit in memory), 'cpu' (no usable GPU: runs on the processor)."""
     want = int(getattr(config, "CONTEXT_SETTING", config.CONTEXT_LENGTH))
     cap = m.get("ctx_train") or want
     use_vision = bool(vision and m.get("mmproj"))
     out = {"vision": use_vision, "mmproj": m["mmproj"]["path"] if use_vision else None, "mmproj_gpu": use_vision,
            "ngl": "999", "gpu": gpu()}
     g = out["gpu"]
-    if not g:
-        ctx = min(want, cap)
-        out.update(ctx=ctx, est=estimate(m, ctx, use_vision), fit="unknown", ngl="auto")
+    if not g:          # runs on the processor: shorter prompts (it reads them slowly), and it must fit in RAM
+        ctx = min(8192, want, cap)
+        est = estimate(m, ctx, use_vision)
+        out.update(ctx=ctx, est=est, mmproj_gpu=False, ngl="auto",
+                   fit="cpu" if est + 1536 < ram() * 1024 * 0.75 else "too-big")
         return out
     limit = g["total"] - 350
     for ctx in sorted({min(want, cap), min(8192, want, cap)}, reverse=True):
@@ -395,7 +407,8 @@ def plan(m, vision=True):
             out.update(ctx=ctx, est=full, fit="tight" if full > g["total"] - 800 else "ok")
             return out
         if use_vision and estimate(m, ctx, False) <= limit:
-            out.update(ctx=ctx, est=estimate(m, ctx, False), fit="cpu-vision", mmproj_gpu=False)
+            est = estimate(m, ctx, False)
+            out.update(ctx=ctx, est=est, fit="tight" if est > g["total"] - 800 else "cpu-vision", mmproj_gpu=False)
             return out
     ctx = min(8192, want, cap)
     out.update(ctx=ctx, est=estimate(m, ctx, use_vision), fit="too-big", ngl="auto", mmproj_gpu=False)
@@ -406,7 +419,7 @@ def best_default(models):
     """For a first start without the configured model: the biggest model that fits completely."""
     def rank(m):
         p = plan(m)
-        return (p["fit"] != "too-big", p["fit"] in ("ok", "tight", "unknown"), m["size"])
+        return (p["fit"] != "too-big", p["fit"] in ("ok", "tight", "cpu"), m["size"])
     return max(models, key=rank) if models else None
 
 
@@ -458,7 +471,7 @@ def explain(m, p):
         lines.append("No vision: figure explanations need a model marked 👁")
     elif not p["vision"]:
         lines.append("👁 Vision is off")
-    elif p["mmproj_gpu"]:
+    elif p["mmproj_gpu"] or p["fit"] == "cpu":
         lines.append(f"👁 Can look at figures (vision file {Path(m['mmproj']['path']).name})")
     else:
         lines.append("👁 Can look at figures - its vision part runs on the CPU to leave room on the GPU, so figure "
@@ -470,6 +483,8 @@ def explain(m, p):
            "cpu-vision": f"✅ Fits your GPU with vision on the CPU (≈{gb(p.get('est', 0))} of {gb(g['total'])} GB)"
            if g else "",
            "too-big": f"🐢 Too big for your GPU (needs ≈{gb(p.get('est', 0))} of {gb(g['total'])} GB): part of it runs "
-                      "on the CPU, so answers are several times slower" if g else "",
-           "unknown": "No NVIDIA GPU found: the engine puts as much on the GPU as fits"}[p["fit"]]
+                      "on the CPU, so answers are several times slower" if g else
+                      f"🐢 Too big for this computer's memory (needs ≈{gb(p.get('est', 0))} GB of {ram():.0f} GB)",
+           "cpu": f"💻 Runs on the processor (no suitable graphics card): needs ≈{gb(p.get('est', 0))} GB of "
+                  f"{ram():.0f} GB memory; answers take noticeably longer than with a GPU"}.get(p["fit"], "")
     return lines + [fit]
