@@ -74,8 +74,7 @@ caption to the picture or table next to it) and cropped from the page. Open one 
 
 In Ask answers, a source passage that mentions "Fig. 3" or "Table 2" gets a **🖼 Show** toggle with those items.
 Explaining figures needs a model marked 👁 with its vision switched on (see *Choosing the AI model*); set
-`VISION = False` to turn vision off everywhere. Figure explanations relate a figure to your proposal's objectives
-only when its paper is about the same topic (`PROPOSAL_LINK_MIN`).
+`VISION = False` to turn vision off everywhere.
 
 ## LaTeX citations (IEEE and Elsevier)
 Pick a LaTeX style under **Citation style** in the sidebar - **IEEE (IEEEtran)**, **Elsevier numbered** or
@@ -112,20 +111,6 @@ as LaTeX commands, so pdfLaTeX, XeLaTeX and Overleaf all accept them. With Elsev
   short list of **reference facts** it must follow - add a line whenever you catch it getting something wrong
   (`local_settings.example.py` has a set for RF/microwave dielectric sensing).
 
-## Your PhD proposal (optional)
-Set `PROPOSAL_DIR` in `local_settings.py` and the newest file with "proposal" in its name in that folder is built
-into the assistant (your file is only ever copied, never changed):
-- A **brief** of it (aim, objectives, methods and work packages, key evidence, risks, timeline) is given to the AI
-  with every question, so Explain answers and study guides relate papers to *your* objectives ("this informs
-  O2/WP2"). Its numbers are checked against your draft.
-- The **full draft** is searchable as "📝 your proposal draft" - ask "what does my proposal say about X?" -
-  but it is never cited or used as evidence.
-- Sidebar → **📝 Your PhD proposal** shows exactly what the AI knows, which file it read, and which of your draft's
-  references are not in your library yet. Save a new version and it's picked up when the app starts (or press
-  **Re-read my proposal now**).
-- This is not retraining the model: retraining a 9B model on one document needs far more GPU than a laptop has,
-  tends to make the model misremember the details, and would have to be redone after every edit.
-
 ## Study guides
 Library → pick a paper → **📘 Create a study guide** (1-2 minutes, saved). Sections: in one paragraph, the
 problem, key concepts (glossary), method step by step, equations and models (with symbols and units, and the
@@ -140,7 +125,7 @@ page to look at - equations are clearest on the page itself), results, limitatio
 
 ## Settings
 - **`local_settings.py`** (your own, never uploaded - copy `local_settings.example.py` to start):
-  `PAPERS_DIR`, `PROPOSAL_DIR`, `RESEARCH_CONTEXT` (a few lines about your work; Explain mode and study guides
+  `PAPERS_DIR`, `RESEARCH_CONTEXT` (a few lines about your work; Explain mode and study guides
   relate findings to it), `REFERENCE_NOTES`, `MODEL_DIRS` (more folders with models), and any other value from
   `config.py`.
 - **`config.py`** (defaults): default citation style, passages per answer, `AUTO_QUIT_MINUTES`, `CONTEXT_LENGTH`
@@ -174,22 +159,21 @@ optional.
    - **the search model** `nomic-embed-text-v1.5.Q4_K_M.gguf` from
      [nomic-ai/nomic-embed-text-v1.5-GGUF](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF), into the
      `models` folder.
-4. **Your settings** - copy `local_settings.example.py` to `local_settings.py` and set your papers folder,
-   proposal folder (optional) and a few lines about your research.
+4. **Your settings** - copy `local_settings.example.py` to `local_settings.py` and set your papers folder
+   and a few lines about your research.
 5. **Start** - double-click `Start Research Assistant.bat`. The first start indexes every paper (a few seconds per
    PDF). For a Desktop shortcut: right-click the .bat → Send to → Desktop, then give it `icon.ico`.
 
 ## What is not in this repository
 Only the code is on GitHub. These stay on your computer (see `.gitignore`):
 `local_settings.py` (your folders and research context) · `data\` (the search index with text from your papers,
-the Zotero database copy, your bibliography, the copy and brief of your proposal, your model choice, engine logs) ·
+the Zotero database copy, your bibliography, your model choice, engine logs) ·
 `engine\` and `models\` (large downloads, see above) · `.venv\`.
 
 ## Files
 `app.py` (interface) · `rag.py` (search, answers, guides, page images, number check) · `indexer.py` (PDF
 processing) · `figures.py` (tables and figures) · `models.py` (finding models, GPU memory estimates) ·
-`library.py` (Zotero, Crossref, arXiv) · `citations.py` (citation styles, LaTeX/BibTeX) · `proposal.py` (your
-proposal draft and its brief) · `services.py` (AI engine) · `start.py` (startup) · `config.py` (defaults) ·
+`library.py` (Zotero, Crossref, arXiv) · `citations.py` (citation styles, LaTeX/BibTeX) · `services.py` (AI engine) · `start.py` (startup) · `config.py` (defaults) ·
 `local_settings.example.py` (template for your own settings) · `data\index.db` (the index; delete it to rebuild) ·
 `data\bibliography.json` (your reference list) · `data\engine-*.log` (engine logs).
 

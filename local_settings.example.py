@@ -9,11 +9,6 @@ HOME = Path.home()
 # Folder you drop PDFs into (subfolders are included).
 PAPERS_DIR = HOME / "Documents" / "Research Papers"
 
-# Optional: your own proposal/thesis draft. The newest .docx/.pdf with "proposal" in its name in this folder is built
-# into the assistant and re-read whenever you save a new version. To pin one file instead, set PROPOSAL_FILE.
-# PROPOSAL_DIR = HOME / "Documents" / "PhD Proposal"
-# PROPOSAL_FILE = HOME / "Documents" / "PhD Proposal" / "My proposal.docx"
-
 # Optional: your Zotero data folder, or USE_ZOTERO = False to ignore Zotero.
 # ZOTERO_DIR = HOME / "Zotero"
 # USE_ZOTERO = True

@@ -2,7 +2,7 @@
 import html, json, os, re, sqlite3, threading, time
 import pandas as pd
 import streamlit as st
-import config, citations, figures, indexer, models, proposal, rag, services
+import config, citations, figures, indexer, models, rag, services
 from rag import page_label, printed_page, short_authors
 
 st.set_page_config(page_title="Research Assistant", page_icon="📚", layout="wide")
@@ -34,7 +34,7 @@ FIG_UNV_TIP = "Not written anywhere in this paper - read off the image, or a sli
 NO_VISION = ("The current AI model can't look at images. Pick a model marked 👁 (with vision switched on) under "
              "**🧠 AI model** in the sidebar.")
 
-SOURCE_KEYS = {"Zotero": "zotero", "Research Papers folder": "folder", "My PhD proposal": "proposal"}
+SOURCE_KEYS = {"Zotero": "zotero", "Research Papers folder": "folder"}
 
 ANSWER_STYLES = {                     # tuned for Qwen 3.5 9B: explains well without thinking, so Explain starts fast
     "📘 Explain (starts in ~2 s, ~30 s)": dict(explain=True, think=False),
@@ -265,9 +265,6 @@ def cb_zotero(p):
 
 
 def cb_add_bib(path):
-    if by_path.get(path, {}).get("source") == "proposal":
-        st.toast("That's your own proposal draft - nothing to cite")
-        return
     if path not in ss.bib:
         ss.bib.append(path)
         save_bib()
@@ -328,9 +325,6 @@ def latex_block(p, style, page=None, show_cite=True):
 
 
 def cite_block(p, page=None):
-    if p.get("source") == "proposal":
-        st.info("This is your own PhD proposal draft - nothing to cite.", icon="📝")
-        return
     style = ss.style
     n = bib_number(p)
     if citations.is_latex(style):
@@ -428,11 +422,6 @@ def figure_thumb(p, f, key, query="", show_paper=False):
             figure_dialog(f["id"])
 
 
-def links_proposal(pid):
-    """Only papers about the same topic as your proposal get related to its objectives (see PROPOSAL_LINK_MIN)."""
-    return (idx.proposal_similarity(pid) or 0) >= config.PROPOSAL_LINK_MIN
-
-
 def _explain_into(box, msgs, max_tokens=1400):
     text = ""
     for piece in rag.stream_chat(msgs, False, max_tokens=max_tokens):
@@ -483,21 +472,18 @@ def figure_dialog(fid):
                            help="Opens in Excel")
     c3.button("📖 Open the PDF here", key=f"fop_{fid}", on_click=cb_open, args=(p, f["page"]), width="stretch")
     with c4.popover("❝ Cite", width="stretch"):
-        if p.get("source") == "proposal":
-            st.info("This is your own draft - nothing to cite.")
+        n = bib_number(p)
+        intext, credit = figures.cite_lines(p, f, ss.style, n)
+        st.caption(f"In-text, pointing at this {kind} · {ss.style}")
+        st.code(intext, language=None)
+        st.caption("Credit line under your own copy of it")
+        st.code(credit, language=None, wrap_lines=True)
+        if citations.is_latex(ss.style):
+            latex_block(p, ss.style, show_cite=False)
         else:
-            n = bib_number(p)
-            intext, credit = figures.cite_lines(p, f, ss.style, n)
-            st.caption(f"In-text, pointing at this {kind} · {ss.style}")
-            st.code(intext, language=None)
-            st.caption("Credit line under your own copy of it")
-            st.code(credit, language=None, wrap_lines=True)
-            if citations.is_latex(ss.style):
-                latex_block(p, ss.style, show_cite=False)
-            else:
-                st.caption("Reference")
-                st.code(citations.reference(p, ss.style, n), language=None, wrap_lines=True)
-            st.caption("Reusing a published figure in a thesis or paper may need the publisher's permission.")
+            st.caption("Reference")
+            st.code(citations.reference(p, ss.style, n), language=None, wrap_lines=True)
+        st.caption("Reusing a published figure in a thesis or paper may need the publisher's permission.")
 
     st.divider()
     can = vision_ok()
@@ -535,8 +521,7 @@ def figure_dialog(fid):
     if explain_now:
         box = st.empty()
         try:
-            text = _explain_into(box, figures.explain_messages(p, f, idx.chunks_of(f["paper_id"]), vpng,
-                                                               links_proposal(f["paper_id"])))
+            text = _explain_into(box, figures.explain_messages(p, f, idx.chunks_of(f["paper_id"]), vpng))
             if text:
                 figures.save(fid, explained=text, explained_at=time.time())
                 all_figures.clear()
@@ -555,8 +540,8 @@ def figure_dialog(fid):
         vpng = vpng or figures.render(p["path"], f["page"], f["rect"], figures.vision_dpi(f["rect"]))
         box = st.empty()
         try:
-            ans = _explain_into(box, figures.ask_messages(p, f, idx.chunks_of(f["paper_id"]), vpng, qf,
-                                                          links_proposal(f["paper_id"])), max_tokens=900)
+            ans = _explain_into(box, figures.ask_messages(p, f, idx.chunks_of(f["paper_id"]), vpng, qf),
+                                max_tokens=900)
             bad, checked, n_eye = figures.check_explanation(ans, f, chunks)
             box.markdown(render_answer(ans, bad, fig=True), unsafe_allow_html=True)
             st.caption(fig_note(bad, checked, n_eye))
@@ -585,8 +570,7 @@ def render_sources(m, key):
                 continue
             c1, c2, c3, c4 = st.columns([7, 1.3, 1.3, 1.3], vertical_alignment="center")
             mark = "**" if s["n"] in cited else ""
-            own = "📝 *Your proposal draft:* " if p["source"] == "proposal" else ""
-            c1.markdown(f"{mark}[{s['n']}]{mark} {own}{md(p.get('title', ''))}  \n"
+            c1.markdown(f"{mark}[{s['n']}]{mark} {md(p.get('title', ''))}  \n"
                         f"<span class='pg'>{page_label(p, s['page'])}</span>{html.escape(paper_line(p))}",
                         unsafe_allow_html=True)
             c2.button("📖 Open", key=f"o_{key}_{s['n']}", on_click=cb_open, args=(p, s["page"]),
@@ -658,10 +642,9 @@ def model_picker(up):
 with st.sidebar:
     st.title("📚 Research Assistant")
     up = server_ok()
-    n_papers = sum(1 for p in papers.values() if p["source"] != "proposal")
-    has_prop = n_papers < len(papers)
+    n_papers = len(papers)
     n_figs = sum(len(v) for v in figs.values())
-    st.caption(f"{n_papers} papers{' + your PhD proposal' if has_prop else ''} · {len(idx):,} passages · "
+    st.caption(f"{n_papers} papers · {len(idx):,} passages · "
                f"{n_figs:,} tables & figures")
     if up:
         st.success(f"Local AI ready · {models.short({'path': str(config.CHAT_MODEL_FILE)})}", icon="🟢")
@@ -682,49 +665,6 @@ with st.sidebar:
             st.write(gp + " Answers take about a minute instead of a few seconds. "
                      "Restart the computer; if it persists, reinstall the latest NVIDIA driver (from nvidia.com or "
                      "your laptop maker's support app). The app will use the GPU automatically once Windows sees it.")
-
-    with st.expander("📝 Your PhD proposal - what the AI knows", expanded=False):
-        prop_src, prop_brief = proposal.find_file(), proposal.load_brief()
-        if not prop_src:
-            st.caption(f"No file with 'proposal' in its name found in {config.PROPOSAL_DIR}." if config.PROPOSAL_DIR
-                       else "No proposal folder set - add PROPOSAL_DIR to local_settings.py to build your draft in.")
-        else:
-            st.caption(f"Reading **{prop_src.name}** (the newest file with 'proposal' in its name in that folder). "
-                       "The AI keeps the brief below in mind for every answer and study guide, and the full draft is "
-                       "searchable as *your draft* (never cited as evidence). A new version is picked up automatically "
-                       "when the app starts.")
-            if proposal.brief_is_stale():
-                st.warning("Your draft has changed since this brief was written - press Re-read below.", icon="🔄")
-            if prop_brief:
-                nf = prop_brief.get("not_found") or []
-                st.caption(f"Brief written {time.strftime('%d %b %Y, %H:%M', time.localtime(prop_brief['created']))} · "
-                           f"{prop_brief.get('checked', 0)} numbers checked against your draft · "
-                           + (f"not found: {', '.join(nf)}" if nf else "all found"))
-                st.markdown(prop_brief["text"].replace("\n", "  \n"))
-            cov = proposal.coverage_for_index(idx)
-            if cov:
-                missing = [(n, ref) for n, ref, pid_ in cov if not pid_]
-                st.markdown(f"**Your draft's references:** {len(cov) - len(missing)} of {len(cov)} are in your library.")
-                if missing:
-                    st.caption("Not in your library yet - add the ones you can to Zotero so the AI can read them:")
-                    for n, ref in missing:
-                        dm = re.search(r"10\.\d{4,9}/[^\s,;]+", ref)
-                        link = f" · [doi](https://doi.org/{dm.group(0).rstrip('.')})" if dm else ""
-                        st.markdown(f"- [{n}] {md(ref[:110])}…{link}")
-            if st.button("🔄 Re-read my proposal now", width="stretch", disabled=not up,
-                         help="Re-reads the newest draft and writes a new brief (about a minute)."):
-                ok = False
-                with st.spinner("Reading your draft and writing a new brief (about a minute)…"):
-                    try:
-                        _con = indexer.connect()
-                        indexer.sync_proposal(_con, indexer.client(), log=lambda *_: None, force=True)
-                        _con.close()
-                        proposal.make_brief()
-                        ok = True
-                    except Exception as e:
-                        st.error(f"Couldn't update: {e}")
-                if ok:
-                    st.rerun()
 
     st.selectbox("Citation style", citations.STYLES, key="style")
     st.divider()
@@ -760,9 +700,6 @@ with st.sidebar:
 
             try:
                 res = indexer.update_index(log=log, progress=lambda i, n, name: bar.progress(i / n, text=f"{i}/{n}"))
-                if up and proposal.brief_is_stale():
-                    log("Your proposal changed - writing a new brief for the AI (about a minute)…")
-                    proposal.make_brief()
                 status.update(label=f"Done · {res['indexed']} new/changed · {res['total']} papers", state="complete")
             except Exception as e:
                 status.update(label=f"Index update failed: {e}", state="error")
@@ -815,7 +752,7 @@ with tab_ask, chat_area:
                    "terms, physics and why it matters - those sentences carry no citation number. "
                    "Examples: *Why does permittivity differ between calcium oxalate and struvite stones?* · "
                    "*How does an open-ended coaxial probe measure permittivity?* · "
-                   "*Which of my papers could support objective O2 of my proposal?* · "
+                   "*Which of my papers used a split-ring resonator, and what did they measure?* · "
                    "*Compare the deep-learning models used for short-term load forecasting.*" + scope_note)
     for mi, m in enumerate(ss.messages):
         with st.chat_message(m["role"]):
@@ -982,7 +919,7 @@ with tab_lib:
     for pid, p in papers.items():
         rows.append({"pid": pid, "Title": p.get("title", ""), "Authors": short_authors(p), "Year": p.get("year", ""),
                      "Venue": p.get("venue", ""), "Collections": ", ".join(p.get("collections", [])),
-                     "Source": {"zotero": "Zotero", "folder": "Folder", "proposal": "📝 My proposal"}.get(p["source"], p["source"]),
+                     "Source": {"zotero": "Zotero", "folder": "Folder"}.get(p["source"], p["source"]),
                      "Pages": p.get("n_pages") or 0,
                      "Status": {"ok": "", "no-text": "⚠ scanned", "encrypted": "🔒 locked"}.get(p.get("status"), p.get("status")),
                      "DOI": p.get("doi", "")})
@@ -1023,11 +960,6 @@ with tab_lib:
 
         left, right = st.columns([1, 1])
         with left:
-          if p["source"] == "proposal":
-            st.info("This is your own PhD proposal draft. The AI keeps a brief of it in mind (sidebar → 📝 Your PhD "
-                    "proposal) and can search the full text. Its study guide below can help you see how it reads.",
-                    icon="📝")
-          else:
             st.markdown("**Citations**")
             n = bib_number(p)
             for style in citations.TEXT_STYLES:
@@ -1103,8 +1035,7 @@ with tab_lib:
                         status.update(label=f"Explaining {f['label']} ({i} of {len(todo)})…")
                         try:
                             png = figures.render(p["path"], f["page"], f["rect"], figures.vision_dpi(f["rect"]))
-                            text = rag.complete(figures.explain_messages(p, f, chunks_, png, links_proposal(pid)),
-                                                max_tokens=1400).strip()
+                            text = rag.complete(figures.explain_messages(p, f, chunks_, png), max_tokens=1400).strip()
                             if text:
                                 figures.save(f["id"], explained=text, explained_at=time.time())
                                 st.write(f"✓ {f['label']}")

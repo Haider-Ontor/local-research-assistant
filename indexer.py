@@ -253,43 +253,6 @@ def rechunk(con, cl, pid, path, title):
     return len(pieces)
 
 
-def sync_proposal(con, cl, log=print, force=False):
-    """Index your PhD proposal draft as a special 'paper' (source='proposal') whenever the file changes."""
-    import proposal
-    src = proposal.find_file()
-    row = con.execute("SELECT id FROM papers WHERE source='proposal'").fetchone()
-    if not src:
-        if row:
-            delete_paper(con, row[0])
-            con.commit()
-        return False
-    st = src.stat()
-    info = json.dumps({"path": str(src), "mtime": round(st.st_mtime, 1), "size": st.st_size})
-    if row and not force and kv_get(con, "proposal_src") == info and proposal.PDF.exists():
-        return False
-    log(f"Reading your PhD proposal: {src.name}")
-    pdf = proposal.to_pdf(src, log=log)
-    with pymupdf.open(pdf) as doc:
-        pieces = extract_pieces(doc)
-        n_pages = len(doc)
-    head = next((t for _, _, t in pieces if t.lstrip().startswith("#")), "")
-    title = re.sub(r"[#*_]", "", head.split("\n")[0]).strip() or src.stem
-    meta = _meta_from({"title": title, "venue": "Your PhD proposal (draft)", "year": "", "item_type": "document",
-                       "meta_source": "proposal"})
-    if row:
-        delete_paper(con, row[0])
-    now, pst = time.time(), pdf.stat()
-    pid = con.execute("INSERT INTO papers(path, mtime, size, sha1, source, meta, n_pages, status, meta_checked, indexed_at, "
-                      "updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                      (str(pdf), pst.st_mtime, pst.st_size, None, "proposal", json.dumps(meta), n_pages, "ok", now, now,
-                       now)).lastrowid
-    store_pieces(con, cl, pid, pieces, title)
-    kv_set(con, "proposal_src", info)
-    con.commit()
-    log(f"Proposal indexed: {title[:80]} ({n_pages} pages, {len(pieces)} passages)")
-    return True
-
-
 def kv_get(con, key):
     row = con.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
     return row[0] if row else None
@@ -348,7 +311,7 @@ def update_index(log=print, progress=None):
 
     # 1) drop papers whose files are gone (and anything marked as their duplicate)
     removed = 0
-    for pid, path in con.execute("SELECT id, path FROM papers WHERE source != 'proposal'").fetchall():
+    for pid, path in con.execute("SELECT id, path FROM papers").fetchall():
         if os.path.normcase(os.path.abspath(path)) not in cands:
             for (d,) in con.execute("SELECT id FROM papers WHERE dup_of=?", (pid,)).fetchall():
                 delete_paper(con, d)
@@ -440,21 +403,14 @@ def update_index(log=print, progress=None):
             con.rollback()
             log(f"[{i}/{len(todo)}] FAILED {name}: {e}")
 
-    # 4) your PhD proposal draft (re-read only when the file has changed)
-    try:
-        sync_proposal(con, cl, log=log)
-    except Exception as e:
-        con.rollback()
-        log(f"Couldn't read your proposal: {e}")
-
-    # 5) tables and figures (found once per paper, a few seconds each; kept until the PDF changes)
+    # 4) tables and figures (found once per paper, a few seconds each; kept until the PDF changes)
     try:
         figures.sync(con, log=log, progress=progress)
     except Exception as e:
         con.rollback()
         log(f"Couldn't look for tables and figures: {e}")
     summary = {"indexed": added, "duplicates": dups, "removed": removed, "refreshed": refreshed, "failed": failed,
-               "total": con.execute("SELECT count(*) FROM papers WHERE dup_of IS NULL AND source != 'proposal'").fetchone()[0]}
+               "total": con.execute("SELECT count(*) FROM papers WHERE dup_of IS NULL").fetchone()[0]}
     con.close()
     log(f"Done: {added} indexed, {dups} duplicates skipped, {removed} removed, {refreshed} metadata updates, "
         f"{failed} failed. Library now has {summary['total']} papers.")

@@ -105,8 +105,7 @@ class Index:
         for cid in ranked:
             i = int(np.searchsorted(self.ids, cid))
             pid = int(self.pids[i])
-            cap = min(per_paper, 2) if self.papers.get(pid, {}).get("source") == "proposal" else per_paper
-            if per.get(pid, 0) >= cap:                    # your own draft never crowds out the papers
+            if per.get(pid, 0) >= per_paper:
                 continue
             per[pid] = per.get(pid, 0) + 1
             out.append({"chunk_id": cid, "paper_id": pid, "page": int(self.pages[i]), "score": scores[cid]})
@@ -146,16 +145,6 @@ class Index:
         sims = M @ M[where[0]]
         order = [int(j) for j in np.argsort(-sims) if ids[j] != pid and int(ids[j]) in self.papers]
         return [(int(ids[j]), float(sims[j])) for j in order[:k]]
-
-    def proposal_similarity(self, pid):
-        """How close a paper's content is to your proposal draft (cosine of their average embeddings), or None."""
-        prop = next((i for i, p in self.papers.items() if p.get("source") == "proposal"), None)
-        if prop is None or prop == pid:
-            return None
-        self.related(pid, 1)                                    # builds the per-paper averages
-        ids, M = getattr(self, "_cent", (np.zeros(0), None))
-        a, b = np.nonzero(ids == pid)[0], np.nonzero(ids == prop)[0]
-        return float(M[a[0]] @ M[b[0]]) if len(a) and len(b) else None
 
 
 # ---------------------------------------------------------------- model calls
@@ -232,7 +221,7 @@ Rules:
 - Attribute a number only to the method, material or study the excerpt ties it to. Excerpts often describe other techniques or cite other work; say "citing earlier work" when a paper only reports someone else's result.
 - If the excerpts don't answer the question, say so under Answer, then still explain the closest relevant material.
 - Refer to papers by first author and year, e.g. "Smith et al., 2019 [2]".
-- Talk to the researcher directly as "you" ("your proposal", "your objective O2"), never "the researcher".
+- Talk to the researcher directly as "you" ("your work", "your measurements"), never "the researcher".
 - Use LaTeX ($...$) for symbols and equations."""
 
 
@@ -245,29 +234,15 @@ def reference_notes():
     return REFERENCE_INTRO + notes if notes else ""
 
 
-OWN_DRAFT_RULE = ("\n- Excerpts marked (YOUR OWN DRAFT) are from the researcher's own PhD proposal, not published work: use "
-                  "them to connect papers to the plan or to say what the proposal says, never as evidence for a fact.")
-
-
-def research_context(with_proposal=True):
-    """Who the researcher is and what they're working on - including the brief of their PhD proposal."""
-    import proposal
-    ctx = (config.RESEARCH_CONTEXT or "").strip() or "not described (relate findings to engineering research in general)"
-    brief = proposal.brief_text() if with_proposal else ""
-    if brief:
-        ctx += ("\n\nTheir PhD proposal - a brief of their current draft (their own plan, not published evidence; "
-                "when a paper is relevant to it, name the specific objective or work package it could inform):\n" + brief)
-    return ctx
+def research_context():
+    """Who the researcher is and what they work on (RESEARCH_CONTEXT in local_settings.py)."""
+    return (config.RESEARCH_CONTEXT or "").strip() or "not described (relate findings to engineering research in general)"
 
 
 def system_prompt(explain):
     if not explain:
-        import proposal
-        brief = proposal.brief_text()
-        extra = ("\n\nFor context, the researcher's PhD proposal (their own plan, not evidence):\n" + brief) if brief else ""
-        return SYSTEM + OWN_DRAFT_RULE + extra
-    return (SYSTEM_EXPLAIN.replace("{RESEARCH}", research_context()) + OWN_DRAFT_RULE
-            + reference_notes())
+        return SYSTEM
+    return SYSTEM_EXPLAIN.replace("{RESEARCH}", research_context()) + reference_notes()
 
 
 def range_label(paper, pages):
@@ -284,10 +259,7 @@ def build_excerpts(hits, papers):
         p = papers.get(h["paper_id"], {})
         who = short_authors(p)
         where = range_label(p, h["pages"]) if h.get("pages") else page_label(p, h["page"])
-        if p.get("source") == "proposal":
-            head = f"[{n}] (YOUR OWN DRAFT) the researcher's PhD proposal \"{p.get('title', '')}\", {where}"
-        else:
-            head = f"[{n}] \"{p.get('title', '')}\" ({who + ', ' if who else ''}{p.get('year', 'n.d.')}), {where}"
+        head = f"[{n}] \"{p.get('title', '')}\" ({who + ', ' if who else ''}{p.get('year', 'n.d.')}), {where}"
         blocks.append(head + "\n" + h["text"])
     return "\n\n".join(blocks)
 
@@ -435,7 +407,7 @@ For each equation or model the paper uses: its name, what it relates, every symb
 The main findings with exact numbers, units and conditions.
 ## Limitations and open questions
 ## How this could help your work
-Only for the parts of the researcher's work this paper is genuinely relevant to (name the proposal objective or work package where one fits); skip the rest. Write to the researcher as "you".
+Only for the parts of the researcher's work this paper is genuinely relevant to; skip the rest. Write to the researcher as "you".
 
 Rules:
 - Put the page label after every fact taken from the paper, e.g. (p. 4) - in every section, including "In one paragraph".

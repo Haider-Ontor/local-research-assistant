@@ -1,8 +1,7 @@
 # Personal settings (folders, research context) - stay on this computer
 local_settings.py
 
-# Everything built from your papers and proposal: search index, Zotero copy, bibliography,
-# proposal copy and brief, engine logs
+# Everything built from your papers: search index, Zotero copy, bibliography, model choice, engine logs
 data/
 
 # Large downloads - see README, "Setup on a new computer"

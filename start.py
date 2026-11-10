@@ -73,14 +73,6 @@ def main():
         indexer.update_index()
     except Exception as e:
         print("WARNING: index not updated -", e)
-    try:
-        import proposal
-        if services.api_up() and proposal.brief_is_stale():
-            print("Writing a brief of your PhD proposal for the AI to keep in mind (about a minute)…")
-            b = proposal.make_brief()
-            print(f"Proposal brief ready ({len(b['text'].split())} words).")
-    except Exception as e:
-        print("WARNING: proposal brief not updated -", e)
     print("\nStarting the app…")
     proc = subprocess.Popen([sys.executable, "-m", "streamlit", "run", str(config.APP_DIR / "app.py"),
                              "--server.port", str(config.APP_PORT), "--server.address", "127.0.0.1",

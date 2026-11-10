@@ -19,12 +19,6 @@ BIB_PATH = DATA_DIR / "bibliography.json"
 # Drop new PDFs here (subfolders are included).
 PAPERS_DIR = HOME / "Documents" / "Research Papers"
 
-# Your own proposal/thesis draft (optional): the newest .docx/.pdf with "proposal" in its name in PROPOSAL_DIR is built
-# into the assistant (re-read automatically whenever you save a new version). To pin one file instead, set
-# PROPOSAL_FILE to its path. Leave both as None to switch this off.
-PROPOSAL_DIR = None
-PROPOSAL_FILE = None
-
 # Your Zotero library. Set USE_ZOTERO = False to ignore it.
 USE_ZOTERO = True
 ZOTERO_DIR = HOME / "Zotero"
@@ -48,9 +42,6 @@ EMBED_MODEL_NAME = "nomic-embed-text-v1.5.Q4_K_M.gguf"
 VISION = True
 MMPROJ_NAME = "mmproj-qwen3.5-9b-bf16.gguf"
 VISION_IMAGE_TOKENS = 1280     # most image tokens per figure (more = finer detail, slower)
-# Figure explanations relate a figure to your proposal's objectives only when its paper is about the same topic
-# (similarity of the paper to your draft, 0-1). Papers on other topics are related to RESEARCH_CONTEXT only.
-PROPOSAL_LINK_MIN = 0.74
 EMBED_MODEL = "nomic-embed-text-v1.5"
 CHAT_PORT = 18431
 EMBED_PORT = 18432
@@ -61,8 +52,8 @@ REASONING_BUDGET = int(os.environ.get("RA_REASONING_BUDGET", 1500))   # max toke
 WIDE_CONTEXT = True            # give the model the passages either side of each match, not just the match
 AUTO_QUIT_MINUTES = float(os.environ.get("RA_AUTO_QUIT_MINUTES", 10))   # stop everything this long after the last tab closes
 
-# What you work on, in a few lines. Explain mode and study guides relate findings to it (a brief of your proposal is
-# added automatically). Set it in local_settings.py.
+# What you work on, in a few lines. Explain mode, study guides and figure explanations relate findings to it.
+# Set it in local_settings.py.
 RESEARCH_CONTEXT = ""
 
 # Correct reference facts the model must follow when it explains things (a small local model gets some textbook facts
@@ -89,7 +80,6 @@ if _LOCAL.exists():
 
 # ---------------------------------------------------------------- worked out from the settings above
 PAPERS_DIR = Path(PAPERS_DIR)
-PROPOSAL_DIR = Path(PROPOSAL_DIR) if PROPOSAL_DIR else None
 ZOTERO_DIR = Path(ZOTERO_DIR)
 MODEL_DIRS = [Path(d) for d in MODEL_DIRS]
 CONTEXT_SETTING = CONTEXT_LENGTH          # what you asked for; CONTEXT_LENGTH becomes what the running model uses

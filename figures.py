@@ -273,8 +273,7 @@ def connect_tables(con):
 def sync(con, log=print, progress=None, force=False):
     """Find tables and figures in every paper that hasn't been looked at yet (or has changed)."""
     connect_tables(con)
-    rows = con.execute("SELECT id, path, sha1, meta FROM papers WHERE dup_of IS NULL AND status = 'ok' "
-                       "AND source != 'proposal'").fetchall()
+    rows = con.execute("SELECT id, path, sha1, meta FROM papers WHERE dup_of IS NULL AND status = 'ok'").fetchall()
     live = {r[0] for r in rows}
     done = {pid: (v, s) for pid, v, s in con.execute("SELECT paper_id, version, sha1 FROM figure_runs")}
     for pid in [p for p in done if p not in live]:
@@ -527,7 +526,7 @@ What it shows: trends, comparisons, peaks, shifts, the best and worst cases. Giv
 ### What this means
 Plain language for someone new to this exact topic: define every term, symbol and unit you use; explain the physics or intuition behind the result.
 ### Why it matters
-Why the authors show it and its limits and caveats. Then - only where it genuinely fits - how it could help the researcher's work described above, naming the one proposal objective it fits best. If it doesn't really relate to their work, say in one sentence that it is background and stop: never force a link.
+Why the authors show it and its limits and caveats. Then - only where it genuinely fits - how it could help the researcher's work described above. If it doesn't really relate to their work, say in one sentence that it is background and stop: never force a link.
 
 Rules:
 - Describe only what is in the image, the caption and the passages. Never invent values, labels or results. If something is too small to read, say so.
@@ -566,13 +565,11 @@ def context_passages(p, f, chunks, max_chars=3600):
     return out
 
 
-def explain_messages(p, f, chunks, png, with_proposal=True):
-    """with_proposal=False leaves the proposal brief out (for papers on other topics), so the small model doesn't force
-    a link to the proposal's objectives."""
+def explain_messages(p, f, chunks, png):
     import rag
     system = FIG_PROMPT.replace("{what}", "table" if f["kind"] == "table" else "figure") \
                        .replace("{shows}", SHOWS[f["kind"]]) \
-                       .replace("{RESEARCH}", rag.research_context(with_proposal)) + rag.reference_notes()
+                       .replace("{RESEARCH}", rag.research_context()) + rag.reference_notes()
     from rag import page_label
     parts = [f"Paper: {p.get('title', '')} ({rag.short_authors(p)}, {p.get('year', '')})",
              f"{f['label']} on {page_label(p, f['page'])}. Caption: {f['caption'] or '(none)'}"]
@@ -587,10 +584,7 @@ def explain_messages(p, f, chunks, png, with_proposal=True):
     parts.append(f"Explain this {f['kind']}. Start every value you read off the image by eye with ≈ (e.g. ≈4.5 GHz). "
                  "Put the page label, e.g. (p. 8), after every value taken from the caption, the table cells or the passages. "
                  "Don't calculate anything. In 'Why it matters', if this is not about the same topic as one of the "
-                 "researcher's projects, say in one sentence which of their interests it is background for, and stop."
-                 + ("" if with_proposal else " This paper is NOT on the topic of the researcher's PhD proposal or their "
-                    "sensor work: don't mention the proposal, its objectives or sensors - relate it only to the one "
-                    "interest listed above that it matches, in one sentence."))
+                 "researcher's projects, say in one sentence which of their interests it is background for, and stop.")
     return [{"role": "system", "content": system},
             {"role": "user", "content": [{"type": "text", "text": "\n\n".join(parts)},
                                          {"type": "image_url", "image_url": {"url": "data:image/png;base64," +
@@ -607,11 +601,11 @@ Rules:
 - Use LaTeX ($...$) for symbols."""
 
 
-def ask_messages(p, f, chunks, png, question, with_proposal=True):
+def ask_messages(p, f, chunks, png, question):
     import rag
-    msgs = explain_messages(p, f, chunks, png, with_proposal)
+    msgs = explain_messages(p, f, chunks, png)
     msgs[0]["content"] = ASK_PROMPT.replace("{what}", "table" if f["kind"] == "table" else "figure") \
-                                   .replace("{RESEARCH}", rag.research_context(with_proposal)) + rag.reference_notes()
+                                   .replace("{RESEARCH}", rag.research_context()) + rag.reference_notes()
     text = msgs[1]["content"][0]["text"]
     msgs[1]["content"][0]["text"] = text.rsplit("\n\nExplain this", 1)[0] + f"\n\nQuestion: {question}"
     return msgs
