@@ -2,8 +2,14 @@
 
 Everything started here lives in a Windows job tied to this window: close the window (or press Quit in the app,
 or leave the browser tab closed for a while) and the engine and app stop - nothing stays in the background.
+
+    python start.py                      start with the model you picked last time
+    python start.py --list-models        show the models found on this computer
+    python start.py --model gemma        start with (and remember) the model whose file name contains "gemma"
+    python start.py --model NAME --no-vision     ... without its vision part (saves GPU memory)
 """
 import os, socket, subprocess, sys, time, webbrowser
+from pathlib import Path
 import config, services, indexer
 
 try:
@@ -20,8 +26,40 @@ def port_open(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def model_options():
+    """--list-models / --model NAME [--no-vision]. Returns False when the app shouldn't start."""
+    import models
+    args = sys.argv[1:]
+    if "--list-models" in args:
+        found = models.scan(refresh=True)
+        if not found:
+            print("No models found. Put a GGUF chat model in", config.MODELS_DIR, "or download one in LM Studio.")
+        for m in found:
+            print(f"\n{models.label(m)}\n  {m['path']}")
+            for line in models.explain(m, models.plan(m)):
+                print("  ·", line)
+        return False
+    if "--model" in args:
+        i = args.index("--model")
+        name = args[i + 1] if i + 1 < len(args) else ""
+        hits = models.search(models.scan(), name) if name else []
+        if len(hits) != 1:
+            print(f'"{name}" matches {len(hits)} models - be more specific. Models found:' if hits else
+                  f'No model matches "{name}". Models found:')
+            for m in hits or models.scan():
+                print("  ", Path(m["path"]).name)
+            return False
+        vision = "--no-vision" not in args
+        models.apply(hits[0]["path"], vision)
+        models.save_choice(hits[0]["path"], vision)
+        print(f"Model: {models.short(hits[0])}" + ("" if vision else " (vision off)") + " - remembered for next time.")
+    return True
+
+
 def main():
     print("=== Research Assistant ===\n")
+    if not model_options():
+        return
     if port_open(config.APP_PORT):
         print("Already running - opening it in your browser.")
         webbrowser.open(URL)

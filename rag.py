@@ -147,6 +147,16 @@ class Index:
         order = [int(j) for j in np.argsort(-sims) if ids[j] != pid and int(ids[j]) in self.papers]
         return [(int(ids[j]), float(sims[j])) for j in order[:k]]
 
+    def proposal_similarity(self, pid):
+        """How close a paper's content is to your proposal draft (cosine of their average embeddings), or None."""
+        prop = next((i for i, p in self.papers.items() if p.get("source") == "proposal"), None)
+        if prop is None or prop == pid:
+            return None
+        self.related(pid, 1)                                    # builds the per-paper averages
+        ids, M = getattr(self, "_cent", (np.zeros(0), None))
+        a, b = np.nonzero(ids == pid)[0], np.nonzero(ids == prop)[0]
+        return float(M[a[0]] @ M[b[0]]) if len(a) and len(b) else None
+
 
 # ---------------------------------------------------------------- model calls
 _CLIENTS = {}
@@ -221,7 +231,7 @@ Rules:
 - Don't copy equations out of the excerpts (PDF text garbles them). Name the equation or model, say what it relates and define its symbols; use the textbook form from the reference facts only when it helps.
 - Attribute a number only to the method, material or study the excerpt ties it to. Excerpts often describe other techniques or cite other work; say "citing earlier work" when a paper only reports someone else's result.
 - If the excerpts don't answer the question, say so under Answer, then still explain the closest relevant material.
-- Refer to papers by first author and year, e.g. "Saçlı et al., 2019 [2]".
+- Refer to papers by first author and year, e.g. "Smith et al., 2019 [2]".
 - Talk to the researcher directly as "you" ("your proposal", "your objective O2"), never "the researcher".
 - Use LaTeX ($...$) for symbols and equations."""
 
@@ -239,11 +249,11 @@ OWN_DRAFT_RULE = ("\n- Excerpts marked (YOUR OWN DRAFT) are from the researcher'
                   "them to connect papers to the plan or to say what the proposal says, never as evidence for a fact.")
 
 
-def research_context():
+def research_context(with_proposal=True):
     """Who the researcher is and what they're working on - including the brief of their PhD proposal."""
     import proposal
     ctx = (config.RESEARCH_CONTEXT or "").strip() or "not described (relate findings to engineering research in general)"
-    brief = proposal.brief_text()
+    brief = proposal.brief_text() if with_proposal else ""
     if brief:
         ctx += ("\n\nTheir PhD proposal - a brief of their current draft (their own plan, not published evidence; "
                 "when a paper is relevant to it, name the specific objective or work package it could inform):\n" + brief)

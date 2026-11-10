@@ -3,9 +3,9 @@ import os, re, sys, json, time, hashlib, sqlite3, unicodedata
 import numpy as np
 import pymupdf
 from openai import OpenAI
-import config, library
+import config, figures, library
 
-SCHEMA = """
+SCHEMA = figures.SCHEMA + """
 CREATE TABLE IF NOT EXISTS papers(
   id INTEGER PRIMARY KEY, path TEXT UNIQUE, mtime REAL, size INTEGER, sha1 TEXT, source TEXT,
   zotero_key TEXT, zotero_att_key TEXT, meta TEXT, n_pages INTEGER, first_printed_page INTEGER,
@@ -314,6 +314,8 @@ def delete_paper(con, pid):
     con.execute("DELETE FROM chunks WHERE paper_id=?", (pid,))
     con.execute("DELETE FROM summaries WHERE paper_id=?", (pid,))
     con.execute("DELETE FROM guides WHERE paper_id=?", (pid,))
+    con.execute("DELETE FROM figures WHERE paper_id=?", (pid,))
+    con.execute("DELETE FROM figure_runs WHERE paper_id=?", (pid,))
     con.execute("DELETE FROM papers WHERE id=?", (pid,))
 
 
@@ -444,6 +446,13 @@ def update_index(log=print, progress=None):
     except Exception as e:
         con.rollback()
         log(f"Couldn't read your proposal: {e}")
+
+    # 5) tables and figures (found once per paper, a few seconds each; kept until the PDF changes)
+    try:
+        figures.sync(con, log=log, progress=progress)
+    except Exception as e:
+        con.rollback()
+        log(f"Couldn't look for tables and figures: {e}")
     summary = {"indexed": added, "duplicates": dups, "removed": removed, "refreshed": refreshed, "failed": failed,
                "total": con.execute("SELECT count(*) FROM papers WHERE dup_of IS NULL AND source != 'proposal'").fetchone()[0]}
     con.close()

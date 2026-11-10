@@ -18,8 +18,13 @@ PAPERS_DIR = HOME / "Documents" / "Research Papers"
 # ZOTERO_DIR = HOME / "Zotero"
 # USE_ZOTERO = True
 
-# Answer model file in the models folder (see README, "Setup on a new computer").
+# AI models: pick one in the app's sidebar (🧠 AI model). The app finds .gguf models in its models folder and in
+# LM Studio's model folder; add other folders here.
+# MODEL_DIRS = [r"D:\AI models"]
+# The model used until you pick one in the app (a file in the models folder), and its vision file:
 # CHAT_MODEL_NAME = "qwen3.5-9b-q4_k_m.gguf"
+# MMPROJ_NAME = "mmproj-qwen3.5-9b-bf16.gguf"
+# VISION = False       # never load vision files (saves GPU memory; figure explanations off)
 
 # A few lines about what you work on. Explain mode and study guides relate findings to it.
 RESEARCH_CONTEXT = ("PhD project: <your topic> - <the materials, methods and instruments you use>. "
