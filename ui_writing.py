@@ -161,6 +161,8 @@ def _show_result(samples, up):
     st.caption(" · ".join(b for b in bits if b))
     if hits:
         st.caption(LEGEND)
+    for note in writing.text_signs(out, samples):
+        st.caption("〰️ " + note)
     missing, added = writing.number_check(r["src"], out)
     if missing:
         st.warning("These numbers from the original aren't in the rewrite - check nothing was lost: "
@@ -197,9 +199,14 @@ def _show_check(samples):
     if not t:
         return
     hits = writing.find_tells(t, samples)
+    notes = writing.text_signs(t, samples)
     st.markdown("##### Signs of AI writing in your text")
+    for note in notes:
+        st.caption("〰️ " + note)
     if not hits:
-        st.success("None of the usual signs of AI writing were found.", icon="✅")
+        if not notes:
+            st.success("None of the usual signs of AI writing were found. (That isn't proof either way: these "
+                       "are hints.)", icon="✅")
         return
     strong = sum(h["strong"] for h in hits)
     st.caption(f"{len(hits)} found ({strong} clear, {len(hits) - strong} weaker) · "

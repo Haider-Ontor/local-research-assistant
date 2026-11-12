@@ -152,16 +152,28 @@ you - the way *you* write, and checks texts for the usual signs of AI writing.
 - **Only the AI-sounding parts:** rewrites just the flagged sentences and keeps the rest word for word.
 - **Correct grammar and spelling** (on by default) copies your voice without your slips; off keeps your habits too.
 - **Safety checks:** every number in the original must still be there (and nothing new added); if the model copies
-  from your samples, reuses a sentence of yours, drops a paragraph or adds an opinion you didn't give, that part is
-  written again more carefully - and as a last resort only its AI-sounding sentences are fixed.
-- **🔍 Check for AI signs** works without the AI: it underlines what reads as machine-written (overused words like
-  "delve" or "testament", "serves as" instead of "is", "not just X, but Y", tacked-on "…, highlighting …", inflated
-  importance, vague "experts say", chatbot leftovers, dashes, bold and bullet points). Weaker signs only count when
-  another sign is in the same paragraph, and **anything you use in your own samples is never flagged** - the signs
-  are hints, not proof.
+  from your samples, reuses a sentence of yours, drops a paragraph, adds an opinion or a conclusion you didn't give,
+  or describes the text instead of rewriting it, that part is written again (it is told what went wrong) - and as a
+  last resort only its AI-sounding sentences are fixed. It can't check facts that aren't numbers, so read the result.
+- It works best on the kinds of writing your samples cover; for a different kind (say an email when your samples are
+  essays), add a sample or two of that kind first.
+- **🔍 Check for AI signs** works without the AI: it underlines what reads as machine-written. Older signs: overused
+  words like "delve" or "testament", "serves as" instead of "is", "not just X, but Y", tacked-on "…, highlighting …",
+  inflated importance, "Despite its…, it faces challenges" endings, vague "experts say", dashes, bold and bullet
+  points. Newer ones (2026 chatbots): "should be treated as… rather than…", "does not by itself establish",
+  "while specific details are limited", "is associated with" instead of saying what the link is, a cluster of their
+  new everyday words ("quietly", "dependable", "prioritize"…), and every sentence 8-20 words long with nothing but
+  commas and full stops. Also chatbot leftovers: "I hope this helps", `[Your Name]` blanks, `oaicite` markers,
+  `utm_source=chatgpt.com` links. Weaker signs only count when another sign is in the same paragraph, and
+  **anything you use in your own samples is never flagged** - the signs are hints, not proof.
+- **What is deliberately not flagged**, because the guide lists it as unreliable or as more typical of people:
+  perfect grammar, formal wording, ordinary connectors ("Moreover", "Furthermore"), "in order to", "the fact that",
+  "very", "perhaps".
 
 The checks follow Wikipedia's guide [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
-and the [humanizer](https://github.com/blader/humanizer) skill (MIT), restated in this app's own words.
+(checked against its November 2026 revision; the signs that only exist on Wikipedia, such as edit summaries and
+wikitext, are left out) and the [humanizer](https://github.com/blader/humanizer) skill (MIT), restated in this app's
+own words.
 A 9B model is good at structure, connectors and vocabulary but not perfect: read the result before you use it.
 
 ## Answer styles (sidebar)
