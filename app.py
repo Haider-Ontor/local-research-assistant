@@ -2,7 +2,7 @@
 import html, json, os, re, sqlite3, threading, time
 import pandas as pd
 import streamlit as st
-import config, citations, downloads, figures, firstrun, indexer, models, rag, services, ui_setup
+import config, citations, downloads, figures, firstrun, indexer, models, rag, services, ui_setup, ui_writing
 from rag import page_label, printed_page, short_authors
 
 st.set_page_config(page_title="Research Assistant", page_icon="📚", layout="wide")
@@ -753,8 +753,14 @@ if not papers:
     st.info("Your library is still being indexed, or no PDFs were found yet. Click **🔄 Check for new papers** "
             f"in the sidebar once indexing has finished. New PDFs go in: `{config.PAPERS_DIR}`")
 
-tab_ask, tab_find, tab_lib, tab_bib, tab_models = st.tabs(
-    ["💬 Ask", "🔎 Find", "📚 Library", f"🧾 Bibliography ({len(ss.bib)})", "🧠 Models"])
+tab_ask, tab_find, tab_lib, tab_bib, tab_rewrite, tab_models = st.tabs(
+    ["💬 Ask", "🔎 Find", "📚 Library", f"🧾 Bibliography ({len(ss.bib)})", "✍️ Rewrite", "🧠 Models"])
+
+with tab_rewrite:
+    try:
+        ui_writing.rewrite_tab(up)
+    except Exception as e:          # never let this tab break the rest of the app
+        st.error(f"This tab ran into a problem: {e}")
 
 with tab_models:
     try:

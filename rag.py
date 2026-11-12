@@ -321,14 +321,16 @@ def _visible(full):
     return out.lstrip()
 
 
-def stream_chat(messages, think=False, max_tokens=config.MAX_ANSWER_TOKENS, stats=None):
+def stream_chat(messages, think=False, max_tokens=config.MAX_ANSWER_TOKENS, stats=None, temperature=None):
     """Yields visible answer text; reasoning (if any) and speed are recorded in `stats`."""
     stats = stats if stats is not None else {}
     stats.update(reasoning="", tokens=0, first=None, start=time.time())
     # thinking is switched on/off through the chat template (works for Qwen3 and Qwen3.5); the engine caps how long
-    # the model may think (REASONING_BUDGET). Low temperature keeps numbers and wording close to the papers.
+    # the model may think (REASONING_BUDGET). Low temperature keeps numbers and wording close to the papers
+    # (rewriting in your voice asks for a little more variety).
+    temp = temperature if temperature is not None else 0.6 if think else 0.3
     resp = client().chat.completions.create(model=config.CHAT_MODEL, messages=messages, stream=True,
-                                            temperature=0.6 if think else 0.3, top_p=0.95 if think else 0.8,
+                                            temperature=temp, top_p=0.95 if think else 0.8,
                                             max_tokens=max_tokens + (config.REASONING_BUDGET + 200 if think else 0),
                                             extra_body={"chat_template_kwargs": {"enable_thinking": bool(think)},
                                                         "top_k": 20})
@@ -473,9 +475,9 @@ def guide_messages(head, body, from_notes=False):
             {"role": "user", "content": f"{head}\n{what}:\n\n{body}"}]
 
 
-def complete(messages, max_tokens=900):
+def complete(messages, max_tokens=900, temperature=None):
     """Non-streamed answer (used for study-guide notes)."""
-    return "".join(stream_chat(messages, False, max_tokens=max_tokens))
+    return "".join(stream_chat(messages, False, max_tokens=max_tokens, temperature=temperature))
 
 
 # ---------------------------------------------------------------- automatic number check

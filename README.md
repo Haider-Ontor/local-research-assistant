@@ -2,8 +2,8 @@
 
 A private, offline "ChatPDF" for your research library. It reads every PDF in your Zotero library and in your
 papers folder, answers questions with citations to the exact paper and page, explains what the papers mean, writes
-study guides, finds and explains tables and figures, and formats references in IEEE, Harvard, APA 7, BibTeX and
-LaTeX (IEEE and Elsevier templates).
+study guides, finds and explains tables and figures, formats references in IEEE, Harvard, APA 7, BibTeX and
+LaTeX (IEEE and Elsevier templates), and rewrites any text in your own voice.
 The AI runs on your own computer - any open GGUF model, which the app suggests, downloads and sets up for you
 (Qwen 3.5, Gemma 4, Mistral, GLM, gpt-oss and thousands more from Hugging Face). Nothing you read or ask leaves your
 computer; the only internet use is downloading the engine and models, and metadata lookups on Crossref/arXiv for
@@ -137,6 +137,33 @@ from Zotero (braced, so the template can't lower-case "RF", "LSTM" or "pH"); acc
 as LaTeX commands, so pdfLaTeX, XeLaTeX and Overleaf all accept them. With Elsevier's styles load `hyperref`
 (their template already does): their DOI links need it.
 
+## ✍️ Rewrite in your voice
+The **✍️ Rewrite** tab rewrites any text you paste - an AI draft, rough notes, a paragraph that doesn't sound like
+you - the way *you* write, and checks texts for the usual signs of AI writing.
+
+- **Your writing samples** (under the tab): paste pieces you wrote yourself, or add .txt / .docx / .pdf files (a file
+  holding several pieces under headings such as "Essay 1: …" becomes one sample each). Aim for 1,500+ words in the
+  kind of writing you'll rewrite. They stay in `data\writing_samples.json` on your computer.
+- **How it learns your style:** it measures your habits (sentence length, how you open sentences, the phrases you
+  reuse, punctuation, contractions, "I") and the local model writes a short description of your style once.
+- **In my voice:** the text is first boiled down to plain notes (so none of its wording survives), then written up
+  the way you write, using the samples most like it (your reports for a report, your essays for an essay). A second
+  pass rewrites any sentence that still shows a sign of AI writing.
+- **Only the AI-sounding parts:** rewrites just the flagged sentences and keeps the rest word for word.
+- **Correct grammar and spelling** (on by default) copies your voice without your slips; off keeps your habits too.
+- **Safety checks:** every number in the original must still be there (and nothing new added); if the model copies
+  from your samples, reuses a sentence of yours, drops a paragraph or adds an opinion you didn't give, that part is
+  written again more carefully - and as a last resort only its AI-sounding sentences are fixed.
+- **🔍 Check for AI signs** works without the AI: it underlines what reads as machine-written (overused words like
+  "delve" or "testament", "serves as" instead of "is", "not just X, but Y", tacked-on "…, highlighting …", inflated
+  importance, vague "experts say", chatbot leftovers, dashes, bold and bullet points). Weaker signs only count when
+  another sign is in the same paragraph, and **anything you use in your own samples is never flagged** - the signs
+  are hints, not proof.
+
+The checks follow Wikipedia's guide [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+and the [humanizer](https://github.com/blader/humanizer) skill (MIT), restated in this app's own words.
+A 9B model is good at structure, connectors and vocabulary but not perfect: read the result before you use it.
+
 ## Answer styles (sidebar)
 - **📘 Explain (starts in ~2 s, ~30 s in full)** - the answer, then *What this means* (terms, symbols, units,
   intuition), *How they got it* (method), and *Why it matters* for your work.
@@ -190,12 +217,14 @@ found automatically), and copy `local_settings.example.py` to `local_settings.py
 ## What is not in this repository
 Only the code is on GitHub. These stay on your computer (see `.gitignore`):
 `local_settings.py` (your folders and research context) · `data\` (the search index with text from your papers,
-the Zotero database copy, your bibliography, your model choice, a Hugging Face token if you added one, engine logs) ·
+the Zotero database copy, your bibliography, your model choice, your writing samples and style, a Hugging Face token
+if you added one, engine logs) ·
 `engine\` and `models\` (large downloads) · `.venv\`, `tools\uv\` and `tools\python\` (Python, installed on first
 start).
 
 ## Files
-`app.py` (interface) · `ui_setup.py` (setup page and 🧠 Models tab) · `rag.py` (search, answers, guides, page images,
+`app.py` (interface) · `ui_setup.py` (setup page and 🧠 Models tab) · `writing.py` + `ui_writing.py` (✍️ Rewrite:
+your style, AI-sign checks, rewriting) · `rag.py` (search, answers, guides, page images,
 number check) · `indexer.py` (PDF processing) · `figures.py` (tables and figures) · `models.py` (finding models,
 GPU memory estimates) · `hardware.py` (graphics card, memory, engine build) · `catalog.py` + `catalog.json`
 (suggested models) · `hub.py` (Hugging Face) · `downloads.py` (background downloads, engine install) ·
