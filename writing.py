@@ -451,6 +451,13 @@ _ACADEMIC = [
     ("comment", "Comment on a result",
      r"(?:^|(?<=[.!?]\s))(?:Surprisingly|Interestingly|Remarkably|Strikingly|Unsurprisingly)(?=,)",
      "Report the result; interpret it in the discussion.", True),
+    ("asfor", "\"As for X\"", r"(?:^|(?<=[.!?]\s))As for\b", "State the facts directly.", True),
+    ("otherhand", "\"On the other hand\" on its own",
+     r"(?:^|(?<=[.!?]\s))On the other hand(?=,)", "Without \"On the one hand\" first, use \"However\" or "
+     "\"whereas\".", True),
+    ("stack", "Stacked additive links",
+     r"(?:^|(?<=[.!?]\s))(?:Moreover|Additionally|Furthermore|Also|In addition)(?=,)",
+     "Fine once; several in a row read as mechanical. Often no link word is needed.", False),
     ("sweeping", "Overstated claim", r"\b(?:proves?|proven|always|never|everyone|nobody|undoubtedly)\b",
      "Be cautious: \"suggests\", \"indicates\", \"may\".", False),
 ]
@@ -559,20 +566,30 @@ def text_signs(text, samples=None):
 # ---------------------------------------------------------------- academic articles
 # From the university academic-writing tips and Ecarnot et al., "Writing a scientific article" (Eur Geriatr Med 2015).
 _MODE = {"academic": False}
-ACADEMIC = """This text is part of an academic research article, not an exam essay. Ignore the structure and linking phrases of the samples ("Overall", "In detail", "On the other hand", "Firstly", "Thus", "To conclude", "The provided ..."): take only their vocabulary level.
-- Formal register: no contractions, no cliches ("in this day and age"), no colloquial words ("lots of", "get", "kids"); prefer "many", "obtain", "children".
-- Cautious claims: where the evidence is limited use one hedge ("suggests", "may", "appears to", "is likely to"); no sweeping generalisations; never "proves". Never stack hedges.
-- Objective: no emotive or judging words ("dreadful", "stunning", "surprisingly", "interestingly"), above all when reporting results.
-- Clear: one idea per sentence; short sentences are fine; keep technical terms, symbols and units exactly.
-- Keep every citation, reference number and figure or table reference exactly as written.
-- Tense: established knowledge in the present ("X is common"); what other studies reported, and what was done and found in this study, in the past ("Smith et al. showed", "we measured", "the resonance shifted").
-- Keep the same paragraphs. Add no introduction, summary or concluding sentence."""
+ACADEMIC = """This text is part of a research article in science and technology, not an exam essay. Ignore the structure and linking phrases of the samples ("Overall", "In detail", "Firstly", "Thus", "To conclude", "The provided ..."): take only their vocabulary level.
+- Each paragraph opens with a topic sentence that states its point; the sentences after it give the detail and evidence for that point. Never end a paragraph on a new, unrelated point.
+- Keep the key terms exactly as given: the same thing always has the same name (do not swap in synonyms - in technical writing a new word suggests a new thing). Pronouns ("it", "this") may refer back to them.
+- Link sentences naturally and with variety: often no link word at all, sometimes "and" or "but", sometimes a logical link ("However", "Therefore", "Because") where it carries real meaning. Never several sentences in a row opening with "Moreover", "Additionally", "Furthermore" or "Also".
+- Avoid "As for X," (state the facts directly), "not only ... but also" (use "and" unless B really is unexpected) and "On the other hand" without "On the one hand" (use "However" or "whereas").
+- Use natural word pairings of the field ("receive treatment", "respond to", "seek", "carry out a measurement").
+- Formal register: no contractions, cliches or colloquial words ("lots of", "get", "kids").
+- Write with calm authority: precise and measured, neither inflated nor over-hedged. One hedge only where the evidence is limited ("suggests", "may"); never "proves". If the text states what the work adds, keep that statement explicit.
+- Objective: no emotive or judging words ("dreadful", "stunning", "surprisingly", "interestingly").
+- Tell the reader what is coming where it helps ("To test this, ...", "Two samples were characterised ..."), so nothing arrives as a surprise.
+- Keep every citation, reference number, symbol, unit and figure or table reference exactly as written.
+- Tense: established knowledge in the present; what other studies reported, and what this study did and found, in the past; research still under way in the present perfect.
+- Add no facts, examples, arguments, introduction, summary or conclusion that are not in the text."""
 
 
 def _academic_user(user):
-    return re.sub(r"Open it the way I open.*?close it the way I close it\. Use my vocabulary and register\.",
-                  "Write it as a passage of an academic article: no essay openings, linking phrases or conclusions. "
-                  "Use my vocabulary level.", user, flags=re.S)
+    user = re.sub(r"Open it the way I open.*?close it the way I close it\. Use my vocabulary and register\.",
+                  "Write it as a passage of a research article: topic sentence first, no essay openings, linking "
+                  "phrases or conclusions. Use my vocabulary level.", user, flags=re.S)
+    # one or two paragraphs per original paragraph, as the content needs
+    return re.sub(r"as (\d+) paragraphs? in the same order",
+                  lambda m: f"as {m.group(1)} to {2 * int(m.group(1))} paragraphs in the same order (split an original "
+                            "paragraph only where it holds two separate points; one point per paragraph, each opening "
+                            "with its topic sentence)", user)
 
 
 # ---------------------------------------------------------------- the model's instructions
@@ -663,7 +680,8 @@ def notes_messages(text):
                                         "notes: every fact, number (with its unit), name, date, comparison, example, "
                                         "argument and opinion, in the order they appear. Use plain wording, not the "
                                         "text's phrasing, but keep its technical terms and names (such as \"equality "
-                                        "of opportunity\" or \"S21\"). Leave out remarks to the reader (such as \"I "
+                                        "of opportunity\" or \"S21\"), and copy every citation ([1], (Smith et al., "
+                                        "2019)) onto the note it supports. Leave out remarks to the reader (such as \"I "
                                         "hope this helps\") and any line that only says how important, exciting or "
                                         "promising something is (such as \"the future looks bright\" or \"an evolving "
                                         "landscape\").\nFormat: first a line \"Kind: ...\" (for example: report "

@@ -36,3 +36,10 @@ State of the project, so work can continue in a new session without the chat his
 - Engine: `services.ensure_llm()`; rewrite: `writing.rewrite(text, samples, profile, "voice", True, stats,
   academic=True)`; the stream contains `MARK`/`RESET`/`POLISH` tokens (see ui_writing._stream_into).
 - UI: `streamlit.testing.v1.AppTest.from_file("app.py")`.
+
+## Academic mode, round 2 (2026-11-13)
+- ACADEMIC rules now also follow the user's coherence/cohesion, Level 7 and STEMM-writing guides: topic sentence
+  first, key terms kept identical (no synonym swapping), varied/balanced transitions, no "As for", lone "On the other
+  hand" or reflexive "not only...but also", natural collocations, calm authority (not over-hedged), signposting.
+- Output may have 1-2 paragraphs per input paragraph (`_academic_user` rewrites the paragraph instruction).
+- Checker (`_ACADEMIC`): added "As for", lone "On the other hand", stacked Moreover/Additionally/Furthermore/Also.
