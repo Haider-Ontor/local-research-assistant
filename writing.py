@@ -429,7 +429,35 @@ def _paragraph_of(spans, pos):
     return -1
 
 
-def find_tells(text, samples=None):
+# extra checks for an academic article (from the same two guides as ACADEMIC below)
+_ACADEMIC = [
+    ("contraction", "Contraction", r"\b\w+n['’]t\b|\b(?:it|that|there|what|here|he|she|let)['’]s\b|\b\w+['’](?:re|ve|ll|d|m)\b",
+     "Write it out in full (\"does not\", \"it is\").", True),
+    ("linker", "Essay-style linker",
+     r"(?:^|(?<=[.!?]\s))(?:Overall|In detail|Firstly|Secondly|Thirdly|Lastly|To conclude|In conclusion|To sum up|"
+     r"Moving to|All in all)(?=,)", "Start with the topic of the sentence instead.", True),
+    ("opinion", "Personal opinion",
+     r"\b(?:Here I (?:firmly )?stand with|I (?:firmly )?(?:believe|stand with|think|feel)|in my (?:opinion|view))\b",
+     "State what the evidence shows, impersonally.", True),
+    ("colloquial", "Colloquial word",
+     r"\b(?:kids|mums|loads of|lots of|a lot of|cool|stuff|okay|huge|really|pretty (?:much|good|clear)|kind of|"
+     r"sort of|get|gets|got|getting)\b", "Use the formal word (\"many\", \"obtain\", \"large\").", False),
+    ("cliche", "Cliche",
+     r"\b(?:in the nick of time|this day and age|first and foremost|last but not least|double-edged sword|"
+     r"tip of the iceberg|think outside the box|needless to say)\b", "Say it plainly.", True),
+    ("emotive", "Emotive word",
+     r"\b(?:dreadful|horrendous|stunning|adorable|amazing|awesome|terrible|incredible|fantastic|shocking|horrible|"
+     r"wonderful)\b", "Keep it objective: describe, don't react.", True),
+    ("comment", "Comment on a result",
+     r"(?:^|(?<=[.!?]\s))(?:Surprisingly|Interestingly|Remarkably|Strikingly|Unsurprisingly)(?=,)",
+     "Report the result; interpret it in the discussion.", True),
+    ("sweeping", "Overstated claim", r"\b(?:proves?|proven|always|never|everyone|nobody|undoubtedly)\b",
+     "Be cautious: \"suggests\", \"indicates\", \"may\".", False),
+]
+_ACADEMIC = [(k, label, re.compile(rx, re.I | re.M), advice, strong) for k, label, rx, advice, strong in _ACADEMIC]
+
+
+def find_tells(text, samples=None, academic=None):
     """Signs of AI writing in `text`: [{'start', 'end', 'text', 'key', 'label', 'advice', 'strong'}], in order.
     Anything your own samples also do is left out; weak signs only count with another sign in the same paragraph."""
     o = own(samples)
@@ -454,6 +482,10 @@ def find_tells(text, samples=None):
             if phrase and phrase in o["text"]:
                 continue                                    # you write this yourself
             add(m, key, label, advice, strong)
+    if _MODE["academic"] if academic is None else academic:     # academic article: formal-style signs too
+        for key, label, rx, advice, strong in _ACADEMIC:
+            for m in rx.finditer(text):
+                add(m, key, label, advice, strong)
     for w, rx, strong in AI_WORDS:
         if w in o["words"]:
             continue
@@ -524,6 +556,25 @@ def text_signs(text, samples=None):
     return []
 
 
+# ---------------------------------------------------------------- academic articles
+# From the university academic-writing tips and Ecarnot et al., "Writing a scientific article" (Eur Geriatr Med 2015).
+_MODE = {"academic": False}
+ACADEMIC = """This text is part of an academic research article, not an exam essay. Ignore the structure and linking phrases of the samples ("Overall", "In detail", "On the other hand", "Firstly", "Thus", "To conclude", "The provided ..."): take only their vocabulary level.
+- Formal register: no contractions, no cliches ("in this day and age"), no colloquial words ("lots of", "get", "kids"); prefer "many", "obtain", "children".
+- Cautious claims: where the evidence is limited use one hedge ("suggests", "may", "appears to", "is likely to"); no sweeping generalisations; never "proves". Never stack hedges.
+- Objective: no emotive or judging words ("dreadful", "stunning", "surprisingly", "interestingly"), above all when reporting results.
+- Clear: one idea per sentence; short sentences are fine; keep technical terms, symbols and units exactly.
+- Keep every citation, reference number and figure or table reference exactly as written.
+- Tense: established knowledge in the present ("X is common"); what other studies reported, and what was done and found in this study, in the past ("Smith et al. showed", "we measured", "the resonance shifted").
+- Keep the same paragraphs. Add no introduction, summary or concluding sentence."""
+
+
+def _academic_user(user):
+    return re.sub(r"Open it the way I open.*?close it the way I close it\. Use my vocabulary and register\.",
+                  "Write it as a passage of an academic article: no essay openings, linking phrases or conclusions. "
+                  "Use my vocabulary level.", user, flags=re.S)
+
+
 # ---------------------------------------------------------------- the model's instructions
 GRAMMAR = {True: "Use correct grammar, spelling and punctuation: copy how they write, not their slips.",
            False: "Keep their habits as they are, including informal grammar and phrasing."}
@@ -535,6 +586,10 @@ def system_prompt(samples, profile, fix_grammar=True):
     notes = style_notes(style_stats([s["text"] for s in samples]))
     rules_extra = "" if o["dashes"] else "\n- dashes of any kind (— or –); use commas, full stops or brackets"
     prof = re.sub(r"(?m)^\s*[*•]\s+", "- ", re.sub(r"\*\*|__", "", profile or "")).strip()
+    if _MODE["academic"]:          # the samples' essay habits stay out; the article's conventions come in
+        prof = ACADEMIC
+        notes = "\n".join(l for l in notes.splitlines()
+                          if not l.startswith(("- Often starts", "- Phrases they use", "- Joins related", "- Paragraphs")))
     return f"""You rewrite text so that it reads as if one particular person wrote it themselves. You know their writing from the samples the user gives you. You return only the rewritten text.
 
 How this person writes:
@@ -629,7 +684,7 @@ def write_messages(text, notes, samples, profile, fix_grammar=True, ctx=None, li
     ctx = int(ctx or config.CONTEXT_LENGTH)
     out_tokens = int(_tokens(text) * 1.6) + 300
     budget = ctx - _tokens(system) - _tokens(notes) - out_tokens - 400
-    chosen = pick_samples(samples, text, budget, limit)
+    chosen = pick_samples(samples, text, budget, min(limit, 2) if _MODE["academic"] else limit)
     n_par = len(paragraphs(text))
     opens = [" ".join(sentences(s["text"])[0].split()[:8]) + "…" for s in chosen[:2] if sentences(s["text"])]
     user = (f"{SAMPLES_INTRO}\n\n{_samples_block(chosen)}\n\nWhat my text has to say:\n{notes.strip()}\n\n"
@@ -643,6 +698,8 @@ def write_messages(text, notes, samples, profile, fix_grammar=True, ctx=None, li
             "from the points above: add no arguments, reasons, examples, counter-arguments or conclusions of your "
             "own, keep every number exactly as given, and don't reuse sentences from my samples - borrow only how I "
             "write." + _feedback(problem))
+    if _MODE["academic"]:
+        user = _academic_user(user)
     return [{"role": "system", "content": system}, {"role": "user", "content": user}], out_tokens
 
 
@@ -741,6 +798,10 @@ def drift(src, out, samples, profile="", light=False):
             example = min(copied)
             return (f"it copied text from your samples (\"{example}…\")" if n == 6 else
                     f"it reused a sentence from your samples (\"{example}…\")")
+    cites = r"\[\d+(?:\s*[,–-]\s*\d+)*\]|\([A-Z][^()\n]{0,80}?(?:19|20)\d\d[a-z]?\)"
+    lost = [c for c in re.findall(cites, src) if re.sub(r"\s", "", c) not in re.sub(r"\s", "", out)]
+    if lost:
+        return f"it dropped the citation {lost[0]}"
     a, b = numbers_in_text(src), numbers_in_text(out)
     if a and len(a - b) / len(a) > 0.25:
         return "it dropped numbers from the text"
@@ -749,13 +810,14 @@ def drift(src, out, samples, profile="", light=False):
     return None
 
 
-def rewrite(text, samples, profile, mode="voice", fix_grammar=True, stats=None):
+def rewrite(text, samples, profile, mode="voice", fix_grammar=True, stats=None, academic=False):
     """Yields the rewritten text piece by piece (long texts a few paragraphs at a time).
     mode "voice": the text is turned into plain notes, then written up the way you write.
     mode "light": only the sentences with a sign of AI writing are rewritten; the rest stays word for word.
     Each part is checked (drift): if the model copied from your samples or lost numbers it tries again more
     carefully, and if that fails too the part is left as it was (stats['kept'] counts those)."""
     import rag
+    _MODE["academic"] = bool(academic)
     stats = stats if stats is not None else {}
     stats.update(problems=[], kept=0)
     t0 = time.time()
@@ -803,7 +865,7 @@ def rewrite(text, samples, profile, mode="voice", fix_grammar=True, stats=None):
                     else:
                         stats["polished"] = stats.get("polished", 0) + 1
                         out = better
-                if how == "voice" and text_signs(out, samples):       # every sentence the same length
+                if how == "voice" and not academic and text_signs(out, samples):       # every sentence the same length
                     msgs, n = rhythm_messages(out, samples, profile, fix_grammar)
                     yield POLISH
                     varied = ""
@@ -826,9 +888,9 @@ def rewrite(text, samples, profile, mode="voice", fix_grammar=True, stats=None):
     stats["parts"] = len(parts)
 
 
-def revise(draft, samples, profile, fix_grammar=True, stats=None):
+def revise(draft, samples, profile, fix_grammar=True, stats=None, academic=False):
     """Yields the draft with only the sentences that still have a sign of AI writing rewritten."""
-    yield from rewrite(draft, samples, profile, "light", fix_grammar, stats)
+    yield from rewrite(draft, samples, profile, "light", fix_grammar, stats, academic)
 
 
 def _stream(rag, msgs, max_tokens, temperature=0.7):

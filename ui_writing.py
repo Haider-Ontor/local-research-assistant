@@ -39,6 +39,10 @@ def rewrite_tab(up):
                          "reordered).  \n**Only the AI-sounding parts**: keeps everything else word for word.")
     fix = c2.toggle("Correct grammar and spelling", value=True, key="rw_fix",
                     help="On: your voice, without slips. Off: also keeps your habits of grammar and phrasing.")
+    st.toggle("📄 Academic article: formal, cautious, objective - no essay structure or linking phrases", value=True,
+              key="rw_academic", help="Follows academic-writing guidance: no contractions or colloquialisms, one hedge "
+                                      "where evidence is limited, no emotive words, past tense for methods and results, "
+                                      "citations kept. Off: your essay style (openings, linkers, paragraph plan).")
     b1, b2, _ = st.columns([1, 1, 2])
     go = b1.button("✍️ Rewrite", type="primary", width="stretch", disabled=not (src.strip() and samples and up))
     chk = b2.button("🔍 Check for AI signs", width="stretch", disabled=not src.strip())
@@ -108,7 +112,7 @@ def _run_rewrite(src, mode, fix, samples):
     st.caption("Writing…" + (" (a long text goes a few paragraphs at a time)" if _words(src) > writing.CHUNK_WORDS
                              else ""))
     try:
-        out = _stream_into(writing.rewrite(src, samples, prof, mode, fix, stats))
+        out = _stream_into(writing.rewrite(src, samples, prof, mode, fix, stats, ss.get("rw_academic", True)))
     except Exception as e:
         st.error(f"The rewrite stopped: {e}")
         return
@@ -124,7 +128,7 @@ def _run_revise(r, samples):
     prof = writing.profile(samples) or ""
     stats = {}
     try:
-        out = _stream_into(writing.revise(r["out"], samples, prof, r["fix"], stats))
+        out = _stream_into(writing.revise(r["out"], samples, prof, r["fix"], stats, ss.get("rw_academic", True)))
     except Exception as e:
         st.error(f"The revision stopped: {e}")
         return
@@ -149,8 +153,8 @@ def _show_result(samples, up):
         _run_revise(r, samples)
     out = r["out"]
     _problems_note(r.get("stats") or {})
-    hits = writing.find_tells(out, samples)
-    before = writing.find_tells(r["src"], samples)
+    hits = writing.find_tells(out, samples, ss.get("rw_academic", True))
+    before = writing.find_tells(r["src"], samples, ss.get("rw_academic", True))
     st.markdown("##### Your version")
     with st.container(border=True):
         st.markdown(writing.highlight_html(out, hits), unsafe_allow_html=True)
@@ -198,7 +202,7 @@ def _show_check(samples):
     t = ss.get("rw_check")
     if not t:
         return
-    hits = writing.find_tells(t, samples)
+    hits = writing.find_tells(t, samples, ss.get("rw_academic", True))
     notes = writing.text_signs(t, samples)
     st.markdown("##### Signs of AI writing in your text")
     for note in notes:
