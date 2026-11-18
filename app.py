@@ -563,6 +563,20 @@ def figure_grid(p_of, items, key, query="", show_paper=False, ncols=3):
                 figure_thumb(p_of(f), f, f"{key}_{f['id']}", query=query, show_paper=show_paper)
 
 
+def also_relevant(m):
+    """Other papers in the library that match the question but didn't fit into the answer."""
+    also = [(pid, pg) for pid, pg in m.get("also") or [] if pid in papers]
+    if not also:
+        return
+    with st.expander(f"📚 {len(also)} more paper{'s' * (len(also) > 1)} in your library mention this"):
+        st.caption("They matched your question but there wasn't room for them in this answer. Ask again with "
+                   "**Specific papers** set to one of them for a closer look.")
+        for pid, pg in also:
+            p = papers[pid]
+            st.markdown(f"- {md(short_authors(p) or '?')} ({p.get('year') or 'n.d.'}), *{md(p.get('title') or '?')}* "
+                        f"- p. {page_label(p, pg)}")
+
+
 def render_sources(m, key):
     sources, cited = m.get("sources", []), m.get("cited", [])
     if not sources:
@@ -796,6 +810,7 @@ with tab_ask, chat_area:
                     with st.expander("🧠 Model's reasoning"):
                         st.text(m["reasoning"])
                 render_sources(m, mi)
+                also_relevant(m)
 
     if q:
         hist = [{"role": m["role"], "content": m["content"]} for m in ss.messages]
@@ -803,17 +818,34 @@ with tab_ask, chat_area:
             st.markdown(q)
         ss.messages.append({"role": "user", "content": q})
         last_q = next((m["content"] for m in reversed(hist) if m["role"] == "user"), "")
-        rq = f"{last_q} {q}" if last_q and len(q.split()) < 8 else q
+        # only a real follow-up ("and its Q factor?", "what about X?") borrows the previous question's words, so
+        # asking the same thing twice searches the same way
+        follow = re.match(r"(?i)\s*(and|but|so|also|what about|how about|why|how so|it|its|this|that|these|those|"
+                          r"they|them|their|the same|more|explain)\b", q)
+        rq = f"{last_q} {q}" if last_q and follow and len(q.split()) < 8 else q
         single = allowed is not None and len(allowed) == 1
-        hits = idx.search(rq, k=k, allowed=allowed, include_refs=include_refs, per_paper=k if single else 3,
-                          use_vectors=up)
+        if single:
+            hits = idx.search(rq, k=k, allowed=allowed, include_refs=include_refs, per_paper=k, use_vectors=up)
+            also = []
+        else:      # the whole library is searched; the best passage of each paper comes first, so answers draw on
+            # many papers, then second passages from the strongest papers fill any room left
+            spread = idx.search(rq, k=40, allowed=allowed, include_refs=include_refs, per_paper=1, use_vectors=up)
+            deep = idx.search(rq, k=2 * k, allowed=allowed, include_refs=include_refs, per_paper=2, use_vectors=up)
+            first = spread[:max(k, 10)]
+            seen = {h["chunk_id"] for h in first}
+            hits = first + [h for h in deep if h["chunk_id"] not in seen]
+            also = spread[max(k, 10):]
         if config.WIDE_CONTEXT:
-            hits = rag.expand_hits(hits)
+            hits = rag.expand_hits(hits, wide=None if single else 3)
         answer_tokens = config.MAX_EXPLAIN_TOKENS if explain else config.MAX_ANSWER_TOKENS
         budget = config.CONTEXT_LENGTH - answer_tokens - (3000 if think else 0) - 300
         hits = rag.fit_hits(hits, papers, sum(min(len(h["content"]), 700) for h in hist[-4:]), budget, explain=explain)
+        used = {h["paper_id"] for h in hits}
+        also = [(h["paper_id"], h["page"]) for h in (also if not single else []) if h["paper_id"] not in used] + \
+            [(h["paper_id"], h["page"]) for h in (spread[:max(k, 10)] if not single else [])
+             if h["paper_id"] not in used and h["paper_id"] not in {a["paper_id"] for a in also}]
         with st.chat_message("assistant"):
-            msg = {"role": "assistant", "content": "", "sources": [], "cited": [], "q": q}
+            msg = {"role": "assistant", "content": "", "sources": [], "cited": [], "q": q, "also": also}
             if not hits:
                 msg["content"] = "I couldn't find any passages about that in your papers" + (
                     " (check the filters in the sidebar)." if allowed is not None else ".")
@@ -858,6 +890,7 @@ with tab_ask, chat_area:
             if msg.get("meta"):
                 st.caption(msg["meta"])
             render_sources(msg, len(ss.messages) - 1)
+        also_relevant(msg)
 
 # ---------------------------------------------------------------- Find
 with tab_find:

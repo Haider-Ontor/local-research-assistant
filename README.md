@@ -94,6 +94,17 @@ think in Careful mode only.
   Patents, theses and reports without a DOI get guessed details - add those to Zotero for proper citations.
 - Click **Check for new papers** in the sidebar (or just restart). Only new/changed files are processed.
 
+## How your papers are read
+Every PDF is read once when it arrives (or changes): page by page into Markdown (columns in order, tables as tables,
+headings and page numbers kept), split into ~220-word passages, and stored with a meaning fingerprint in
+`data\index.db`. A question searches **all** passages of **all** papers (by meaning and by keywords); the best passage
+of each paper comes first, so an answer draws on up to about 10 different papers, and **📚 more papers in your library
+mention this** under the answer lists the ones that matched but didn't fit.
+
+**One readable file per paper:** `data\papers_md\` holds a Markdown file for each paper (details, abstract, full
+text with `[p. 4]` page markers, tables and figures, references) and `INDEX.md` listing them all. They're kept up to
+date with the index, so you - or any other AI tool - can read a paper without the PDF.
+
 ## Tabs
 - **Ask** - chat with your papers (see answer styles below). Under each answer, **Sources** shows the exact
   passage, **🔍 Show the page** shows the real PDF page with the passage highlighted (figures, tables and

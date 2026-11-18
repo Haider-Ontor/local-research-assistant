@@ -275,14 +275,16 @@ def _stitch(a, b, max_overlap=80, min_overlap=5):
     return a.rstrip() + "\n\n" + b.lstrip()
 
 
-def expand_hits(hits, window=1, db_path=config.DB_PATH):
+def expand_hits(hits, window=1, db_path=config.DB_PATH, wide=None):
     """Wider context: add the passages either side of each match, merging matches that touch.
-    Each result keeps the matched passage(s) in 'cores' (for highlighting) and the match's page in 'page'."""
+    Each result keeps the matched passage(s) in 'cores' (for highlighting) and the match's page in 'page'.
+    wide=N: only the N best matches get the passages either side (the rest stay short, so more papers fit)."""
     if not hits:
         return hits
     groups = []
-    for h in hits:
-        lo, hi = h["chunk_id"] - window, h["chunk_id"] + window
+    for n, h in enumerate(hits):
+        w = window if wide is None or n < wide else 0
+        lo, hi = h["chunk_id"] - w, h["chunk_id"] + w
         for g in groups:
             if g["paper_id"] == h["paper_id"] and lo <= g["hi"] + 1 and hi >= g["lo"] - 1:
                 g["lo"], g["hi"] = min(g["lo"], lo), max(g["hi"], hi)

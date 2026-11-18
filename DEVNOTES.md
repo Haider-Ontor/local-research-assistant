@@ -43,3 +43,12 @@ State of the project, so work can continue in a new session without the chat his
   hand" or reflexive "not only...but also", natural collocations, calm authority (not over-hedged), signposting.
 - Output may have 1-2 paragraphs per input paragraph (`_academic_user` rewrites the paragraph instruction).
 - Checker (`_ACADEMIC`): added "As for", lone "On the other hand", stacked Moreover/Additionally/Furthermore/Also.
+
+## Library coverage + paper files (2026-11-18)
+- `paper_files.py`: one Markdown file per paper in `data/papers_md/` + `INDEX.md`; called at the end of
+  `indexer.update_index` (rewrites only changed papers, removes stale ones). `paper_files.export()` to run by hand.
+- Ask (app.py): search with per_paper=1 over the whole library first (best passage of each paper), then 2nd passages;
+  `rag.expand_hits(..., wide=3)` widens only the top 3 so ~10 papers fit in a 16k context (was ~3).
+  Papers that matched but didn't fit: `msg["also"]`, shown by `also_relevant()`.
+- Follow-up questions only borrow the previous question's words when they start like a follow-up ("and", "what
+  about", "it", ...), so the same question always searches the same way.

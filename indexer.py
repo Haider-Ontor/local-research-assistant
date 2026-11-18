@@ -409,6 +409,11 @@ def update_index(log=print, progress=None):
     except Exception as e:
         con.rollback()
         log(f"Couldn't look for tables and figures: {e}")
+    try:                                     # 5) one readable Markdown file per paper (data/papers_md)
+        import paper_files
+        paper_files.export(log=log)
+    except Exception as e:
+        log(f"Couldn't write the paper files: {e}")
     summary = {"indexed": added, "duplicates": dups, "removed": removed, "refreshed": refreshed, "failed": failed,
                "total": con.execute("SELECT count(*) FROM papers WHERE dup_of IS NULL").fetchone()[0]}
     con.close()
