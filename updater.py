@@ -10,7 +10,8 @@ import config
 
 REPO = "Haider-Ontor/local-research-assistant"
 API = f"https://api.github.com/repos/{REPO}/releases/latest"
-KEEP = {"data", "engine", "engine.new", "engine.old", "models", ".venv", ".git", "local_settings.py"}
+KEEP = {"data", "engine", "engine.new", "engine.old", "models", ".venv", ".git", "local_settings.py",
+        ".github", "installer"}                                      # the last two are only for building releases
 KEEP_TOOLS = {"uv", "python", "uv-cache"}
 NO_WINDOW = 0x08000000
 
