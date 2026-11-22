@@ -737,6 +737,7 @@ with st.sidebar:
         os.startfile(config.PAPERS_DIR)
     st.button("🧹 Clear chat", width="stretch", on_click=cb_clear_chat)
     st.divider()
+    ui_setup.update_panel()
     if st.button("⏻ Quit Research Assistant", width="stretch",
                  help="Stops the app and the AI engine, freeing the GPU. Nothing keeps running in the background."):
         st.success("Closed. The AI engine has stopped - you can close this tab.")

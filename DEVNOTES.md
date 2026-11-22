@@ -52,3 +52,12 @@ State of the project, so work can continue in a new session without the chat his
   Papers that matched but didn't fit: `msg["also"]`, shown by `also_relevant()`.
 - Follow-up questions only borrow the previous question's words when they start like a follow-up ("and", "what
   about", "it", ...), so the same question always searches the same way.
+
+## Installer + updates (v1.2.0, 2026-11-22)
+- `VERSION` holds the version. Release = bump VERSION, commit, `git tag vX.Y.Z`, push the tag: GitHub Actions
+  (`.github/workflows/release.yml`) builds `ResearchAssistant-Setup-X.Y.Z.exe` with Inno Setup
+  (`installer/ResearchAssistant.iss`, per-user install in %LOCALAPPDATA%\ResearchAssistant, no admin) and
+  `ResearchAssistant.zip` (git archive), creating the release from `installer/RELEASE_NOTES.md` if needed.
+- `updater.py` + `ui_setup.update_panel()` (sidebar): checks the latest GitHub release (cached 6 h), installs the zip
+  over the app (sha256-checked; never touches data, engine, models, .venv, tools/uv, tools/python, local_settings.py),
+  or runs `git pull --ff-only` in a git checkout. New requirements install on the next start (install.ps1 hash check).

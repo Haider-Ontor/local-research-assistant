@@ -2,7 +2,7 @@
 the app suggests for it, any GGUF model on Hugging Face, and the downloads."""
 from pathlib import Path
 import streamlit as st
-import catalog, config, downloads, firstrun, hardware, hub, indexer, models, services
+import catalog, config, downloads, firstrun, hardware, hub, indexer, models, services, updater
 
 GB = 2 ** 30
 ss = st.session_state
@@ -375,6 +375,44 @@ def token_box():
         if has and c2.button("Remove token", key="hf_token_rm"):
             hub.save_token("")
             st.rerun()
+
+
+# ---------------------------------------------------------------- updates
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def _latest_release():
+    try:
+        return updater.latest()
+    except Exception:
+        return None
+
+
+def update_panel():
+    """Sidebar: this version, and a button that installs a newer release from GitHub."""
+    rel = _latest_release()
+    new = updater.available(rel)
+    label = f"⬆️ Update available: {rel['version']}" if new else f"Version {updater.current()}"
+    with st.expander(label, expanded=new):
+        done = ss.pop("upd_done", None)
+        if done:
+            st.success(done + ". Press **Quit** below, then open Research Assistant again to finish.")
+        if new:
+            notes = rel["notes"].split("## New in")[-1] if "## New in" in rel["notes"] else rel["notes"]
+            st.caption(("New in" + notes if "## New in" in rel["notes"] else notes)[:700])
+            if st.button(f"Install {rel['version']}", type="primary", key="upd_go", width="stretch",
+                         help="Replaces only the app's own files. Your papers, settings, engine and models stay."):
+                with st.spinner("Updating…"):
+                    try:
+                        ss["upd_done"] = updater.install(rel)
+                        _latest_release.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"The update didn't work: {e}")
+        else:
+            st.caption("This is the newest version." if rel else "Couldn't check for updates (offline?).")
+            if st.button("Check for updates", key="upd_check", width="stretch"):
+                _latest_release.clear()
+                st.rerun()
+        st.caption(f"[Releases and source code](https://github.com/{updater.REPO}/releases)")
 
 
 # ---------------------------------------------------------------- the 🧠 Models tab

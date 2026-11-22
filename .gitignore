@@ -23,3 +23,6 @@ __pycache__/
 Thumbs.db
 desktop.ini
 *.log
+
+# installer build output
+dist/

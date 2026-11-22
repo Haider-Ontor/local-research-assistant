@@ -10,6 +10,16 @@ computer; the only internet use is downloading the engine and models, and metada
 PDFs that aren't in Zotero.
 
 ## Download and install (Windows 10/11)
+**Easiest - the installer:** on GitHub, **Releases → latest → `ResearchAssistant-Setup-x.y.z.exe`**. Run it (no
+administrator rights needed; it isn't code-signed, so Windows may ask *More info → Run anyway*), pick a folder with
+space for AI models, and it starts the app. It's built from this repository's source by GitHub Actions
+(`.github/workflows/release.yml`, `installer/ResearchAssistant.iss`). Uninstall it from Windows Settings → Apps.
+
+**Updates:** the sidebar shows your version; when a newer release exists, **⬆️ Update available → Install** replaces
+only the app's own files (your papers index, settings, writing samples, engine and models stay), then quit and reopen.
+A copy cloned with git is updated with `git pull`.
+
+**Without the installer** (same thing, by hand):
 1. **Download** the latest release: on GitHub, **Releases → Research Assistant vX → `ResearchAssistant.zip`** (or
    **Code → Download ZIP**).
 2. **Extract** it to a folder of your choice that OneDrive doesn't sync - for example `C:\ResearchAssistant` (the AI

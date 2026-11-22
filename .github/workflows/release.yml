@@ -1,0 +1,53 @@
+# Builds the Windows installer (ResearchAssistant-Setup-x.y.z.exe) and the update zip from this repository's source,
+# and attaches both to the GitHub release. Runs when a version tag (v1.2.0, ...) is pushed; the tag must match VERSION.
+name: Build Windows installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read VERSION
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") { throw "Tag $env:GITHUB_REF_NAME doesn't match VERSION $v" }
+          "VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer and update zip
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:VERSION" installer\ResearchAssistant.iss
+          if ($LASTEXITCODE) { throw "Inno Setup failed" }
+          git archive --format=zip --prefix=ResearchAssistant/ -o dist\ResearchAssistant.zip HEAD
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ResearchAssistant-${{ env.VERSION }}
+          path: dist/*
+
+      - name: Attach to the release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE) {
+            gh release create $env:GITHUB_REF_NAME --title "Research Assistant $env:VERSION" --notes-file installer\RELEASE_NOTES.md
+          }
+          gh release upload $env:GITHUB_REF_NAME "dist\ResearchAssistant-Setup-$env:VERSION.exe" "dist\ResearchAssistant.zip" --clobber
+          exit 0
