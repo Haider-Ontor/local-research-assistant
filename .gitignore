@@ -29,3 +29,7 @@ dist/
 # Microsoft C++ runtime, added to the installer by the release workflow
 runtime/
 install-log.txt
+# private add-on (✍️ Rewrite) and its notes: kept on the owner's computer only
+writing.py
+ui_writing.py
+DEVNOTES-private.md

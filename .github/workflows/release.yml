@@ -1,4 +1,4 @@
-# Builds the Windows installer (ResearchAssistant-Setup-x.y.z.exe) and the update zip from this repository's source,
+# Builds the Windows installer (ResearchAssistant-Setup.exe) and the update zip from this repository's source,
 # and attaches both to the GitHub release. Runs when a version tag (v1.2.1, ...) is pushed; the tag must match VERSION.
 name: Build Windows installer
 
@@ -65,5 +65,5 @@ jobs:
           if ($LASTEXITCODE) {
             gh release create $env:GITHUB_REF_NAME --title "Research Assistant $env:VERSION" --notes-file installer\RELEASE_NOTES.md
           }
-          gh release upload $env:GITHUB_REF_NAME "dist\ResearchAssistant-Setup-$env:VERSION.exe" "dist\ResearchAssistant.zip" --clobber
+          gh release upload $env:GITHUB_REF_NAME "dist\ResearchAssistant-Setup.exe" "dist\ResearchAssistant.zip" --clobber
           exit 0

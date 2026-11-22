@@ -1,6 +1,6 @@
 """Updates: check GitHub for a newer release of Research Assistant and install it in place.
 
-Only the app's own files are replaced. Your settings (local_settings.py), papers index and writing samples (data),
+Only the app's own files are replaced. Your settings (local_settings.py), papers index (data),
 AI engine (engine), models (models) and Python (.venv, tools/uv, tools/python) are never touched. A copy that was
 cloned with git is updated with "git pull" instead. Changed libraries are installed on the next start."""
 import hashlib, io, re, subprocess, zipfile

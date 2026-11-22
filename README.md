@@ -1,16 +1,19 @@
 # Research Assistant
 
+**[⬇️ Download Research Assistant for Windows](https://github.com/Haider-Ontor/local-research-assistant/releases/latest/download/ResearchAssistant-Setup.exe)** - one installer (`ResearchAssistant-Setup.exe`); run it and it sets up everything. Windows 10/11, 64-bit, no administrator rights. ([All versions and release notes](https://github.com/Haider-Ontor/local-research-assistant/releases))
+
 A private, offline "ChatPDF" for your research library. It reads every PDF in your Zotero library and in your
 papers folder, answers questions with citations to the exact paper and page, explains what the papers mean, writes
 study guides, finds and explains tables and figures, formats references in IEEE, Harvard, APA 7, BibTeX and
-LaTeX (IEEE and Elsevier templates), and rewrites any text in your own voice.
+LaTeX (IEEE and Elsevier templates).
 The AI runs on your own computer - any open GGUF model, which the app suggests, downloads and sets up for you
 (Qwen 3.5, Gemma 4, Mistral, GLM, gpt-oss and thousands more from Hugging Face). Nothing you read or ask leaves your
 computer; the only internet use is downloading the engine and models, and metadata lookups on Crossref/arXiv for
 PDFs that aren't in Zotero.
 
 ## Download and install (Windows 10/11)
-1. On GitHub, open **Releases → latest** and download **`ResearchAssistant-Setup-x.y.z.exe`**.
+1. **[Download `ResearchAssistant-Setup.exe`](https://github.com/Haider-Ontor/local-research-assistant/releases/latest/download/ResearchAssistant-Setup.exe)** (always the newest version; also under **Releases** on
+   the right of the GitHub page).
 2. **Run it.** No administrator rights are needed, and nothing has to be installed first - no Python, Git or Visual
    C++. It isn't code-signed, so Windows may say "Windows protected your PC": click *More info → Run anyway*.
 3. **Pick a folder** with space for AI models (1-20 GB) that OneDrive doesn't sync. The installer copies the app, then
@@ -27,7 +30,7 @@ installer is built from this repository's source by GitHub Actions (`.github/wor
 (redistributed under Microsoft's licence terms).
 
 **Updates:** the sidebar shows your version; when a newer release exists, **⬆️ Update available → Install** replaces
-only the app's own files (your papers index, settings, writing samples, engine and models stay), then quit and reopen.
+only the app's own files (your papers index, settings, engine and models stay), then quit and reopen.
 A copy cloned with git is updated with `git pull`.
 
 **Without the installer** (same thing, by hand):
@@ -171,45 +174,6 @@ from Zotero (braced, so the template can't lower-case "RF", "LSTM" or "pH"); acc
 as LaTeX commands, so pdfLaTeX, XeLaTeX and Overleaf all accept them. With Elsevier's styles load `hyperref`
 (their template already does): their DOI links need it.
 
-## ✍️ Rewrite in your voice
-The **✍️ Rewrite** tab rewrites any text you paste - an AI draft, rough notes, a paragraph that doesn't sound like
-you - the way *you* write, and checks texts for the usual signs of AI writing.
-
-- **Your writing samples** (under the tab): paste pieces you wrote yourself, or add .txt / .docx / .pdf files (a file
-  holding several pieces under headings such as "Essay 1: …" becomes one sample each). Aim for 1,500+ words in the
-  kind of writing you'll rewrite. They stay in `data\writing_samples.json` on your computer.
-- **How it learns your style:** it measures your habits (sentence length, how you open sentences, the phrases you
-  reuse, punctuation, contractions, "I") and the local model writes a short description of your style once.
-- **In my voice:** the text is first boiled down to plain notes (so none of its wording survives), then written up
-  the way you write, using the samples most like it (your reports for a report, your essays for an essay). A second
-  pass rewrites any sentence that still shows a sign of AI writing.
-- **Only the AI-sounding parts:** rewrites just the flagged sentences and keeps the rest word for word.
-- **Correct grammar and spelling** (on by default) copies your voice without your slips; off keeps your habits too.
-- **Safety checks:** every number in the original must still be there (and nothing new added); if the model copies
-  from your samples, reuses a sentence of yours, drops a paragraph, adds an opinion or a conclusion you didn't give,
-  or describes the text instead of rewriting it, that part is written again (it is told what went wrong) - and as a
-  last resort only its AI-sounding sentences are fixed. It can't check facts that aren't numbers, so read the result.
-- It works best on the kinds of writing your samples cover; for a different kind (say an email when your samples are
-  essays), add a sample or two of that kind first.
-- **🔍 Check for AI signs** works without the AI: it underlines what reads as machine-written. Older signs: overused
-  words like "delve" or "testament", "serves as" instead of "is", "not just X, but Y", tacked-on "…, highlighting …",
-  inflated importance, "Despite its…, it faces challenges" endings, vague "experts say", dashes, bold and bullet
-  points. Newer ones (2026 chatbots): "should be treated as… rather than…", "does not by itself establish",
-  "while specific details are limited", "is associated with" instead of saying what the link is, a cluster of their
-  new everyday words ("quietly", "dependable", "prioritize"…), and every sentence 8-20 words long with nothing but
-  commas and full stops. Also chatbot leftovers: "I hope this helps", `[Your Name]` blanks, `oaicite` markers,
-  `utm_source=chatgpt.com` links. Weaker signs only count when another sign is in the same paragraph, and
-  **anything you use in your own samples is never flagged** - the signs are hints, not proof.
-- **What is deliberately not flagged**, because the guide lists it as unreliable or as more typical of people:
-  perfect grammar, formal wording, ordinary connectors ("Moreover", "Furthermore"), "in order to", "the fact that",
-  "very", "perhaps".
-
-The checks follow Wikipedia's guide [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
-(checked against its November 2026 revision; the signs that only exist on Wikipedia, such as edit summaries and
-wikitext, are left out) and the [humanizer](https://github.com/blader/humanizer) skill (MIT), restated in this app's
-own words.
-A 9B model is good at structure, connectors and vocabulary but not perfect: read the result before you use it.
-
 ## Answer styles (sidebar)
 - **📘 Explain (starts in ~2 s, ~30 s in full)** - the answer, then *What this means* (terms, symbols, units,
   intuition), *How they got it* (method), and *Why it matters* for your work.
@@ -263,14 +227,13 @@ found automatically), and copy `local_settings.example.py` to `local_settings.py
 ## What is not in this repository
 Only the code is on GitHub. These stay on your computer (see `.gitignore`):
 `local_settings.py` (your folders and research context) · `data\` (the search index with text from your papers,
-the Zotero database copy, your bibliography, your model choice, your writing samples and style, a Hugging Face token
+the Zotero database copy, your bibliography, your model choice, a Hugging Face token
 if you added one, engine logs) ·
 `engine\` and `models\` (large downloads) · `.venv\`, `tools\uv\` and `tools\python\` (Python, installed on first
 start).
 
 ## Files
-`app.py` (interface) · `ui_setup.py` (setup page and 🧠 Models tab) · `writing.py` + `ui_writing.py` (✍️ Rewrite:
-your style, AI-sign checks, rewriting) · `rag.py` (search, answers, guides, page images,
+`app.py` (interface) · `ui_setup.py` (setup page and 🧠 Models tab) · `rag.py` (search, answers, guides, page images,
 number check) · `indexer.py` (PDF processing) · `figures.py` (tables and figures) · `models.py` (finding models,
 GPU memory estimates) · `hardware.py` (graphics card, memory, engine build) · `catalog.py` + `catalog.json`
 (suggested models) · `hub.py` (Hugging Face) · `downloads.py` (background downloads, engine install) ·
