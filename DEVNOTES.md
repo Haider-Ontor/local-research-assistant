@@ -71,4 +71,6 @@ State of the project, so work can continue in a new session without the chat his
   ResearchAssistant.zip. `downloads.add_runtime()` copies them next to the engine (on engine install and in
   `services.ensure_llm`); it does nothing when `runtime\` is absent (git checkouts).
 - Installer: ArchitecturesAllowed/InstallIn64BitMode=x64compatible (64-bit {sys}/{cmd}), MinVersion=10.0.
+- The installer runs those steps with ExecAsOriginalUser, not Exec: Exec's children inherit Inno Setup's
+  RedirectionGuard mitigation, and uv's Python minor-version junction then fails with error 448 (seen in v1.2.1).
 - Tested by a silent install on the laptop into %TEMP% (setup /VERYSILENT /DIR=... /TASKS=""), then unins000 /VERYSILENT.

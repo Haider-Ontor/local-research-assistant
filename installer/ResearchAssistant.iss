@@ -1,5 +1,5 @@
 ; Windows installer for Research Assistant (Inno Setup 6). Built by .github/workflows/release.yml for every release:
-;   ISCC.exe /DMyAppVersion=1.2.1 installer\ResearchAssistant.iss
+;   ISCC.exe /DMyAppVersion=1.2.2 installer\ResearchAssistant.iss
 ; Nothing has to be installed on the computer first. For the current user (no administrator rights), it:
 ;   1. copies the app, including the Microsoft C++ runtime the AI engine needs (runtime\, added by the workflow);
 ;   2. installs Python and the libraries inside the app folder (tools\install.ps1);
@@ -75,8 +75,10 @@ begin
   WizardForm.FilenameLabel.Caption := 'Details: ' + LogFile;
   WizardForm.ProgressGauge.Style := npbstMarquee;
   try
-    Result := Exec(ExpandConstant('{cmd}'), '/c "' + Cmd + ' >> "' + LogFile + '" 2>&1"', ExpandConstant('{app}'),
-                   SW_HIDE, ewWaitUntilTerminated, Rc) and (Rc = 0);
+    { ExecAsOriginalUser, not Exec: children of Exec inherit Setup's RedirectionGuard mitigation, which stops uv from
+      creating its Python folder link ("untrusted mount point", error 448). Setup runs as this user anyway. }
+    Result := ExecAsOriginalUser(ExpandConstant('{cmd}'), '/c "' + Cmd + ' >> "' + LogFile + '" 2>&1"',
+                                 ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Rc) and (Rc = 0);
   finally
     WizardForm.ProgressGauge.Style := npbstNormal;
   end;
