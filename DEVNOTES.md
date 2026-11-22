@@ -74,4 +74,7 @@ State of the project, so work can continue in a new session without the chat his
 - `RedirectionGuard=no` in the .iss: Setup's children inherit Inno Setup's RedirectionGuard mitigation, and uv's
   Python minor-version junction then fails with error 448 (v1.2.1; ExecAsOriginalUser didn't help in v1.2.2 because a
   non-elevated Setup runs it like Exec). The mitigation matters for elevated installs; this one is per-user.
+- hardware.detect(): if nvidia-smi fails (it said "insufficient permissions" from the Claude desktop shell), the
+  NVIDIA card comes from the registry and its CUDA version from DriverVersion (32.0.15.8180 -> 581.80). Before, an
+  AMD/Intel integrated GPU listed first made the NVIDIA card be skipped -> cpu engine (fixed in 1.2.4).
 - Tested by a silent install on the laptop into %TEMP% (setup /VERYSILENT /DIR=... /TASKS=""), then unins000 /VERYSILENT.

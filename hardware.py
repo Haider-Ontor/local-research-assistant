@@ -41,6 +41,11 @@ def cpu_name():
     return platform.processor() or "CPU"
 
 
+def _cuda_for_driver(d):
+    """The CUDA version an NVIDIA driver runs: 580+ runs CUDA 13, 551+ CUDA 12.4, 525+ CUDA 12.0."""
+    return (13, 0) if d >= 580 else (12, 4) if d >= 551 else (12, 0) if d >= 525 else None
+
+
 def _nvidia():
     out = _run(["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader,nounits"])
     gpus = []
@@ -57,7 +62,7 @@ def _nvidia():
                 g["cuda"] = (int(m.group(1)), int(m.group(2)))
             else:                                     # from the driver number: 580+ runs CUDA 13, 551+ CUDA 12.4
                 d = float(re.match(r"\d+(\.\d+)?", g["driver"]).group(0)) if re.match(r"\d", g["driver"]) else 0
-                g["cuda"] = (13, 0) if d >= 580 else (12, 4) if d >= 551 else (12, 0) if d >= 525 else None
+                g["cuda"] = _cuda_for_driver(d)
     return gpus
 
 
@@ -82,6 +87,10 @@ def _windows_adapters():
         try:
             with winreg.OpenKey(root, sub) as k:
                 name = winreg.QueryValueEx(k, "DriverDesc")[0]
+                try:
+                    drv = str(winreg.QueryValueEx(k, "DriverVersion")[0])
+                except OSError:
+                    drv = ""
                 mem = 0
                 for value in ("HardwareInformation.qwMemorySize", "HardwareInformation.MemorySize"):
                     try:
@@ -95,7 +104,14 @@ def _windows_adapters():
         low = name.lower()
         vendor = "nvidia" if "nvidia" in low else "amd" if ("amd" in low or "radeon" in low) else \
             "intel" if "intel" in low else "other"
-        out.append({"name": name, "vendor": vendor, "total": mem // 2 ** 20})
+        a = {"name": name, "vendor": vendor, "total": mem // 2 ** 20}
+        digits = re.sub(r"\D", "", drv)[-5:]          # Windows' 32.0.15.8180 is NVIDIA driver 581.80
+        if vendor == "nvidia":
+            a["name"] = name.removeprefix("NVIDIA ")    # as nvidia-smi names it
+        if vendor == "nvidia" and len(digits) == 5:
+            a["driver"] = f"{digits[:3]}.{digits[3:]}"
+            a["cuda"] = _cuda_for_driver(float(a["driver"]))
+        out.append(a)
     return out
 
 
@@ -104,9 +120,10 @@ def detect(refresh=False):
     if "hw" in _CACHE and not refresh:
         return _CACHE["hw"]
     gpus = _nvidia()
+    smi = bool(gpus)                                  # nvidia-smi can fail (e.g. without permission to run it)
     names = {g["name"].lower() for g in gpus}
     for a in _windows_adapters():
-        if a["vendor"] == "nvidia" and gpus:
+        if a["vendor"] == "nvidia" and smi:
             continue                                  # nvidia-smi already gave the exact numbers
         if a["name"].lower() not in names and a["vendor"] != "other":
             gpus.append(a)

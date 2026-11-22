@@ -1,5 +1,5 @@
 ## Install (Windows 10/11, 64-bit)
-1. Download **ResearchAssistant-Setup-1.2.3.exe** below and run it. No administrator rights are needed, and nothing
+1. Download **ResearchAssistant-Setup-1.2.4.exe** below and run it. No administrator rights are needed, and nothing
    has to be installed first (no Python, Git or Visual C++).
    It isn't code-signed, so Windows may say "Windows protected your PC": click *More info → Run anyway*.
    (The installer is built from this repository's source by GitHub Actions - see `.github/workflows/release.yml`.)
@@ -11,11 +11,13 @@
 
 Already using Research Assistant 1.2.0 or later? Press **⬆️ Update** in the sidebar. Older copies: run this installer.
 
-## New in 1.2.3 (and 1.2.1-1.2.2)
+## New in 1.2.4 (and 1.2.1-1.2.3)
 - **The installer alone is enough on any Windows 10/11 PC**: it sets up Python, the libraries and the AI engine
   during installation, and brings the Microsoft C++ runtime the AI engine needs (a fresh Windows often lacks it).
 - If the internet drops during installation, the app finishes the setup on first start.
-- 1.2.3 fixes the 1.2.1-1.2.2 installers, whose Python setup was blocked by a Windows protection (error 448)
+- NVIDIA graphics cards are recognised even when `nvidia-smi` can't run (the driver version is read from Windows),
+  so they get the fast CUDA engine instead of the processor build.
+- 1.2.3 fixed the 1.2.1-1.2.2 installers, whose Python setup was blocked by a Windows protection (error 448)
   and was left to the first start.
 
 ## New in 1.2.0

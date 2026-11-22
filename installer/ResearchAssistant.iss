@@ -1,5 +1,5 @@
 ; Windows installer for Research Assistant (Inno Setup 6). Built by .github/workflows/release.yml for every release:
-;   ISCC.exe /DMyAppVersion=1.2.3 installer\ResearchAssistant.iss
+;   ISCC.exe /DMyAppVersion=1.2.4 installer\ResearchAssistant.iss
 ; Nothing has to be installed on the computer first. For the current user (no administrator rights), it:
 ;   1. copies the app, including the Microsoft C++ runtime the AI engine needs (runtime\, added by the workflow);
 ;   2. installs Python and the libraries inside the app folder (tools\install.ps1);
