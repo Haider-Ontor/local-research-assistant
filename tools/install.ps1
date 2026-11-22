@@ -1,6 +1,7 @@
 # Installs what Research Assistant needs to run, inside its own folder: Python (via uv) and the Python libraries.
 # Run by "Start Research Assistant.bat"; quick when everything is already installed. The AI engine and the AI models
 # are downloaded by the app itself (its first-run setup), so it can suggest ones that suit this computer.
+param([switch]$NoShortcut)          # -NoShortcut: the Windows installer makes its own shortcuts
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"          # makes Invoke-WebRequest much faster
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -57,7 +58,7 @@ Write-Host "Installing the libraries (Streamlit, PyMuPDF, ...)..."
 if ($LASTEXITCODE) { throw "Couldn't install the libraries (see the messages above). Check the internet connection and try again." }
 Set-Content $stamp $want
 
-if ($fresh -and -not $env:RA_NO_SHORTCUT) {           # a desktop shortcut, so next time it's one double-click
+if ($fresh -and -not $NoShortcut -and -not $env:RA_NO_SHORTCUT) {           # a desktop shortcut, so next time it's one double-click
     try {
         $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "Research Assistant.lnk"
         if (-not (Test-Path $lnk)) {

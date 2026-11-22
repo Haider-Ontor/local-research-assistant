@@ -1,5 +1,5 @@
 # Builds the Windows installer (ResearchAssistant-Setup-x.y.z.exe) and the update zip from this repository's source,
-# and attaches both to the GitHub release. Runs when a version tag (v1.2.0, ...) is pushed; the tag must match VERSION.
+# and attaches both to the GitHub release. Runs when a version tag (v1.2.1, ...) is pushed; the tag must match VERSION.
 name: Build Windows installer
 
 on:
@@ -23,6 +23,21 @@ jobs:
           if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") { throw "Tag $env:GITHUB_REF_NAME doesn't match VERSION $v" }
           "VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
+      # The AI engine (llama.cpp) needs Microsoft's Visual C++ runtime, which a fresh Windows often lacks. Ship the
+      # redistributable DLLs from Visual Studio's redist folder; the app copies them next to the engine.
+      - name: Add the Microsoft C++ runtime
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          foreach ($a in "x64", "arm64") {
+            $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\$a\Microsoft.VC14*.CRT" -Directory | Sort-Object FullName | Select-Object -Last 1
+            if (-not $crt) { throw "No $a C++ runtime found under $vs" }
+            New-Item -ItemType Directory -Force "runtime\$a" | Out-Null
+            Copy-Item "$crt\*.dll" "runtime\$a\"
+            "$a <- $($crt.FullName)"
+            Get-ChildItem "runtime\$a" | Format-Table Name, Length
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
@@ -32,6 +47,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:VERSION" installer\ResearchAssistant.iss
           if ($LASTEXITCODE) { throw "Inno Setup failed" }
           git archive --format=zip --prefix=ResearchAssistant/ -o dist\ResearchAssistant.zip HEAD
+          python -c "import zipfile, pathlib; z = zipfile.ZipFile(r'dist\ResearchAssistant.zip', 'a', zipfile.ZIP_DEFLATED); [z.write(p, 'ResearchAssistant/' + p.as_posix()) for p in sorted(pathlib.Path('runtime').rglob('*.dll'))]; z.close()"
           Get-ChildItem dist | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v4

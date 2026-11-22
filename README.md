@@ -10,18 +10,30 @@ computer; the only internet use is downloading the engine and models, and metada
 PDFs that aren't in Zotero.
 
 ## Download and install (Windows 10/11)
-**Easiest - the installer:** on GitHub, **Releases → latest → `ResearchAssistant-Setup-x.y.z.exe`**. Run it (no
-administrator rights needed; it isn't code-signed, so Windows may ask *More info → Run anyway*), pick a folder with
-space for AI models, and it starts the app. It's built from this repository's source by GitHub Actions
-(`.github/workflows/release.yml`, `installer/ResearchAssistant.iss`). Uninstall it from Windows Settings → Apps.
+1. On GitHub, open **Releases → latest** and download **`ResearchAssistant-Setup-x.y.z.exe`**.
+2. **Run it.** No administrator rights are needed, and nothing has to be installed first - no Python, Git or Visual
+   C++. It isn't code-signed, so Windows may say "Windows protected your PC": click *More info → Run anyway*.
+3. **Pick a folder** with space for AI models (1-20 GB) that OneDrive doesn't sync. The installer copies the app, then
+   installs Python and its libraries **inside that folder** (about 400 MB) and downloads the AI engine that suits the
+   computer's graphics card - about 5-10 minutes on a normal connection. If the internet drops, the app finishes this
+   on first start (details in `install-log.txt`).
+4. **The app opens in your browser** with a short setup page: choose your papers folder and press
+   **Download and set up** for the AI model it suggests for your computer. Then start asking.
+
+**Next time:** the **Research Assistant** shortcut in the Start menu (or on the desktop). **Uninstall** from Windows
+Settings → Apps; your papers index and downloaded models stay in the folder (delete it to remove them too). The
+installer is built from this repository's source by GitHub Actions (`.github/workflows/release.yml`,
+`installer/ResearchAssistant.iss`) and includes Microsoft's Visual C++ runtime DLLs, which the AI engine needs
+(redistributed under Microsoft's licence terms).
 
 **Updates:** the sidebar shows your version; when a newer release exists, **⬆️ Update available → Install** replaces
 only the app's own files (your papers index, settings, writing samples, engine and models stay), then quit and reopen.
 A copy cloned with git is updated with `git pull`.
 
 **Without the installer** (same thing, by hand):
-1. **Download** the latest release: on GitHub, **Releases → Research Assistant vX → `ResearchAssistant.zip`** (or
-   **Code → Download ZIP**).
+1. **Download** the latest release: on GitHub, **Releases → Research Assistant vX → `ResearchAssistant.zip`**. (It
+   includes the C++ runtime the AI engine needs; **Code → Download ZIP** doesn't, so on a PC without the Microsoft
+   Visual C++ Redistributable use the release zip.)
 2. **Extract** it to a folder of your choice that OneDrive doesn't sync - for example `C:\ResearchAssistant` (the AI
    models are several GB).
 3. **Double-click `Start Research Assistant.bat`.** If Windows says "Windows protected your PC", click *More info →
@@ -36,7 +48,8 @@ A copy cloned with git is updated with `git pull`.
 4. **Next time:** the desktop shortcut. Everything stays in that folder; to uninstall, delete the folder and the
    shortcut.
 
-**What it needs:** Windows 10 or 11 (64-bit), an internet connection for the first setup, and disk space for the
+**What it needs:** Windows 10 or 11 (64-bit) - nothing else installed beforehand - an internet connection for the
+first setup, and disk space for the
 model you pick (1-20 GB; about 7 GB for the suggested model on an 8 GB graphics card). A graphics card is optional:
 NVIDIA cards use the CUDA engine, AMD and Intel cards the Vulkan engine, and without one the AI runs on the processor
 (slower; the app then suggests a small model). Zotero is optional.

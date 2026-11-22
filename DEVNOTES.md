@@ -61,3 +61,14 @@ State of the project, so work can continue in a new session without the chat his
 - `updater.py` + `ui_setup.update_panel()` (sidebar): checks the latest GitHub release (cached 6 h), installs the zip
   over the app (sha256-checked; never touches data, engine, models, .venv, tools/uv, tools/python, local_settings.py),
   or runs `git pull --ff-only` in a git checkout. New requirements install on the next start (install.ps1 hash check).
+
+## Installer does the whole setup (v1.2.1, 2026-11-22)
+- The installer's [Code] (ssPostInstall) runs `tools\install.ps1 -NoShortcut` (Python + libraries) and then
+  `start.py --install-engine` (hardware.engine_build -> downloads.install_engine, waits), hidden, output appended to
+  `install-log.txt`. On failure it says the app finishes on first start (the .bat and setup page still do both).
+- llama.cpp needs msvcp140/vcruntime140(_1).dll. The workflow copies Visual Studio's redist CRT DLLs into
+  `runtime\x64` and `runtime\arm64` (git-ignored) before building; they go into the installer and are appended to
+  ResearchAssistant.zip. `downloads.add_runtime()` copies them next to the engine (on engine install and in
+  `services.ensure_llm`); it does nothing when `runtime\` is absent (git checkouts).
+- Installer: ArchitecturesAllowed/InstallIn64BitMode=x64compatible (64-bit {sys}/{cmd}), MinVersion=10.0.
+- Tested by a silent install on the laptop into %TEMP% (setup /VERYSILENT /DIR=... /TASKS=""), then unins000 /VERYSILENT.

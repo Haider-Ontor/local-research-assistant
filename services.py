@@ -119,6 +119,11 @@ def ensure_llm(log=print, timeout=240):
     if api_up():
         return
     import models
+    try:                                               # the C++ runtime the engine needs, if Windows lacks it
+        import downloads
+        downloads.add_runtime()
+    except Exception:
+        pass
     if not (config.ENGINE_DIR / "llama-server.exe").exists():
         raise RuntimeError(f"The AI engine isn't installed yet ({config.ENGINE_DIR}): open the app and use its "
                            "first-run setup, or the 🧠 Models tab, to download it.")

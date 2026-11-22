@@ -7,6 +7,7 @@ or leave the browser tab closed for a while) and the engine and app stop - nothi
     python start.py --list-models        show the models found on this computer
     python start.py --model gemma        start with (and remember) the model whose file name contains "gemma"
     python start.py --model NAME --no-vision     ... without its vision part (saves GPU memory)
+    python start.py --install-engine             download the AI engine that suits this computer (the installer runs it)
 """
 import os, socket, subprocess, sys, time, webbrowser
 from pathlib import Path
@@ -30,6 +31,22 @@ def model_options():
     """--list-models / --model NAME [--no-vision]. Returns False when the app shouldn't start."""
     import models
     args = sys.argv[1:]
+    if "--install-engine" in args:
+        import downloads, hardware
+        if downloads.engine_info():
+            print("The AI engine is already installed.")
+            return False
+        build, why = hardware.engine_build(hardware.detect())
+        print(f"Downloading the AI engine: {build} ({why})", flush=True)
+        job = downloads.install_engine(build)
+        while job.thread.is_alive():
+            job.thread.join(10)
+            print(f"  {job.fraction():.0%} {job.message}", flush=True)
+        if job.status != "done":
+            print("The AI engine wasn't installed:", job.error or job.message)
+            sys.exit(1)
+        print("AI engine installed.")
+        return False
     if "--list-models" in args:
         found = models.scan(refresh=True)
         if not found:

@@ -214,6 +214,20 @@ def install_engine(build):
     return start(f"AI engine ({build})", files, after=lambda job: _unpack_engine(job, build, tag, files), kind="engine")
 
 
+def add_runtime(eng=None, build=None):
+    """Copy the Microsoft C++ runtime that comes with the installer (runtime\\x64 or runtime\\arm64) next to the
+    engine, so it runs on computers without the Visual C++ Redistributable. Does nothing in a copy without it."""
+    eng = Path(eng or config.ENGINE_DIR)
+    if build is None:
+        build = (engine_info() or {}).get("build", "")
+    src = config.APP_DIR / "runtime" / ("arm64" if "arm64" in build else "x64")
+    if not (src.is_dir() and eng.is_dir()):
+        return
+    for dll in src.glob("*.dll"):
+        if not (eng / dll.name).exists():
+            shutil.copy2(dll, eng / dll.name)
+
+
 def _unpack_engine(job, build, tag, files):
     import models, services
     eng = Path(config.ENGINE_DIR)
@@ -236,6 +250,7 @@ def _unpack_engine(job, build, tag, files):
                     shutil.copyfileobj(src, dst)
     if not (new / "llama-server.exe").exists():
         raise RuntimeError("The engine download doesn't contain llama-server.exe.")
+    add_runtime(new, build)
     (new / BUILD_FILE).write_text(json.dumps({"tag": tag, "build": build}), "utf-8")
     if eng.exists():                               # swap in the new engine: the old one has to stop first
         job.message = "Stopping the old engine…"
