@@ -1,4 +1,4 @@
-# Developer notes (handoff)
+﻿# Developer notes (handoff)
 
 State of the project, so work can continue in a new session without the chat history.
 
@@ -49,3 +49,15 @@ State of the project, so work can continue in a new session without the chat his
 - The installer is named `ResearchAssistant-Setup.exe` (no version), so https://github.com/Haider-Ontor/local-research-assistant/releases/latest/download/ResearchAssistant-Setup.exe
   always gives the newest one; README starts with that link.
 - Rewrite tab: see the Releases line above. Old releases (<= v1.2.4) and git history still contain writing.py.
+
+## AMD Radeon + Intel Arc (v1.4.0, 2026-11-23)
+- hardware._classify: AMD names without RX/Pro/VII/FirePro/Instinct = integrated (Ryzen graphics; UMA carve-out can be
+  large, so the name decides); Intel < 2 GB own memory = integrated. Integrated total = own + RAM/2 (Windows' shared
+  limit); models.gpu() replaces it with the engine's own figure (`llama-server --list-devices`). Usable: cards >= 2 GB;
+  integrated Radeon or Arc with >= 7.5 GB RAM; never Intel UHD/Iris Xe. Order: card > integrated, NVIDIA, memory.
+- services._device(): `--device <id>` for both servers when the engine lists 2+ devices (else llama.cpp splits the
+  model over iGPU + dGPU); `--device none` when no usable chip. Device matched to the Windows name by shared words.
+- catalog: rocm (llama-*-win-rocm-*.zip) and sycl builds, optional; default for AMD/Intel stays vulkan.
+- Laptop test: Ryzen 7 260 / Radeon 780M (Vulkan0, 8327 MiB) ran Qwen3.5-9B Q4_K_M fully on the iGPU:
+  pp1024 143 t/s, tg 5.7 t/s (processor only: pp512 64, tg 4.0). Integrated graphics keeps 1.5 GB spare (models.plan)
+  and uses the engine's free figure: without that, chat + search model + vision ran out of shared memory. (This shell can't see the RTX 5060 through Vulkan or nvidia-smi - sandbox.)

@@ -53,9 +53,14 @@ A copy cloned with git is updated with `git pull`.
 
 **What it needs:** Windows 10 or 11 (64-bit) - nothing else installed beforehand - an internet connection for the
 first setup, and disk space for the
-model you pick (1-20 GB; about 7 GB for the suggested model on an 8 GB graphics card). A graphics card is optional:
-NVIDIA cards use the CUDA engine, AMD and Intel cards the Vulkan engine, and without one the AI runs on the processor
-(slower; the app then suggests a small model). Zotero is optional.
+model you pick (1-20 GB; about 7 GB for the suggested model on an 8 GB graphics card). A graphics chip is optional, and every common kind works: **NVIDIA** (CUDA engine), **any AMD
+Radeon** - RX cards and the Radeon graphics built into Ryzen processors - and **any Intel Arc** - A- and B-series
+cards and the Arc graphics built into Core Ultra processors (both with the Vulkan engine; AMD's ROCm and Intel's
+SYCL engines can be installed instead in the 🧠 Models tab). Integrated graphics shares the computer's memory
+(Windows lets it use up to half), so a 16 GB laptop runs models up to about 7 GB on it. With two graphics chips
+(say integrated Radeon plus an NVIDIA card) the AI runs on the stronger one only. Without a usable graphics chip,
+or with Intel's older UHD / Iris Xe graphics, the AI runs on the processor (slower; the app then suggests a small
+model). Zotero is optional.
 
 PDFs are read as layout-aware Markdown (pymupdf4llm): two-column pages in the right order, tables as real
 tables (every value under its column), section headings kept with each passage, page numbers kept for citing.
@@ -71,8 +76,8 @@ tables (every value under its column), section headings kept with each passage, 
 - The app only accepts connections from this computer, not from other devices on your Wi-Fi.
 
 ## Getting more models: the 🧠 Models tab
-- **This computer** - graphics card, memory, processor, and the AI engine build that suits them (cuda-13 or cuda-12
-  for NVIDIA, vulkan for AMD/Intel, cpu without a graphics card). You can install or switch the engine here.
+- **This computer** - graphics card, memory, processor, and the AI engine build that suits them (cuda-13 or cuda-12 for NVIDIA; vulkan for AMD Radeon
+  and Intel Arc, cards and integrated graphics, with rocm and sycl as alternatives; cpu without a graphics chip). You can install or switch the engine here.
 - **Suggested for this computer** - a curated list of open models (Qwen 3.5, Gemma 4, Ministral 3, GLM-4.6V,
   Qwen3-VL, gpt-oss, Phi-4, …), each with the **best version that runs fully on your computer** (Q6_K, Q5_K_M,
   Q4_K_M, … - smaller versions need less memory and are a little less accurate). ⭐ marks the app's suggestion;

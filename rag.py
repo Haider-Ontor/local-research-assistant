@@ -172,16 +172,22 @@ def server_status():
 
 
 def gpu_problem():
-    """Returns a message if Windows reports the NVIDIA GPU as not working, else None."""
+    """A message if Windows reports an NVIDIA, AMD Radeon or Intel Arc graphics chip as not working, else None."""
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command",
-                              "Get-CimInstance Win32_PnPEntity | ? { $_.Name -like '*NVIDIA GeForce*' } | "
+                              "Get-CimInstance Win32_VideoController | "
                               "% { \"$($_.Name)|$($_.ConfigManagerErrorCode)\" }"],
                              capture_output=True, text=True, timeout=15, creationflags=0x08000000).stdout.strip()
         for line in out.splitlines():
             name, code = line.rsplit("|", 1)
-            if code.strip() not in ("0", ""):
-                return f"{name} isn't working (Windows error code {code.strip()}), so the model runs on the CPU."
+            low = name.lower()
+            if code.strip() in ("0", "") or not re.search(r"nvidia|radeon|amd|arc", low):
+                continue
+            site = ("nvidia.com" if "nvidia" in low else "amd.com/support" if ("radeon" in low or "amd" in low)
+                    else "intel.com (Arc graphics driver)")
+            return (f"{name} isn't working (Windows error code {code.strip()}), so the model runs on the CPU. "
+                    f"Restart the computer; if it persists, install the latest graphics driver from {site} or your "
+                    "laptop maker's support app.")
     except Exception:
         pass
     return None

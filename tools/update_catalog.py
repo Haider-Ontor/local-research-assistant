@@ -63,6 +63,8 @@ def engine():
         "cuda-13": [find(f"llama-{ENGINE_TAG}-bin-win-cuda-13"), find("cudart-llama-bin-win-cuda-13")],
         "cuda-12": [find(f"llama-{ENGINE_TAG}-bin-win-cuda-12"), find("cudart-llama-bin-win-cuda-12")],
         "vulkan": [find(f"llama-{ENGINE_TAG}-bin-win-vulkan")],
+        "rocm": [find(f"llama-{ENGINE_TAG}-bin-win-rocm")],            # AMD's own engine (optional)
+        "sycl": [find(f"llama-{ENGINE_TAG}-bin-win-sycl")],            # Intel's own engine (optional)
         "cpu": [find(f"llama-{ENGINE_TAG}-bin-win-cpu")],
         "cpu-arm64": [find(f"llama-{ENGINE_TAG}-bin-win-cpu", "arm64")],
     }

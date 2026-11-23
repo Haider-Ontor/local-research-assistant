@@ -346,8 +346,14 @@ def gpu():
     if "v" not in _GPU:
         import hardware
         engine = Path(config.ENGINE_DIR)
-        cpu_engine = engine.exists() and not any(engine.glob("ggml-cuda*.dll")) and not any(engine.glob("ggml-vulkan*.dll"))
-        _GPU["v"] = None if cpu_engine else hardware.detect()["gpu"]      # a CPU-only engine can't use the GPU
+        cpu_engine = engine.exists() and not any(f for p in ("cuda", "vulkan", "hip", "sycl")
+                                                 for f in engine.glob(f"ggml-{p}*.dll"))
+        g = None if cpu_engine else hardware.detect()["gpu"]               # a CPU-only engine can't use the GPU
+        if g and g.get("integrated"):          # integrated graphics: the engine knows exactly how much it may share
+            d = hardware.match_device(g, hardware.engine_devices(engine))
+            if d:
+                g = dict(g, total=min(d["total"], d["free"]))     # the screen and other apps use some of it
+        _GPU["v"] = g
     return _GPU["v"]
 
 
@@ -400,15 +406,16 @@ def plan(m, vision=True):
         out.update(ctx=ctx, est=est, mmproj_gpu=False, ngl="auto",
                    fit="cpu" if est + 1536 < ram() * 1024 * 0.75 else "too-big")
         return out
-    limit = g["total"] - 350
+    # leave room: integrated graphics shares its memory with Windows, the screen and the search model
+    limit = g["total"] - (1536 if g.get("integrated") else 350)
     for ctx in sorted({min(want, cap), min(8192, want, cap)}, reverse=True):
         full = estimate(m, ctx, use_vision)
         if full <= limit:
-            out.update(ctx=ctx, est=full, fit="tight" if full > g["total"] - 800 else "ok")
+            out.update(ctx=ctx, est=full, fit="tight" if full > limit - 450 else "ok")
             return out
         if use_vision and estimate(m, ctx, False) <= limit:
             est = estimate(m, ctx, False)
-            out.update(ctx=ctx, est=est, fit="tight" if est > g["total"] - 800 else "cpu-vision", mmproj_gpu=False)
+            out.update(ctx=ctx, est=est, fit="tight" if est > limit - 450 else "cpu-vision", mmproj_gpu=False)
             return out
     ctx = min(8192, want, cap)
     out.update(ctx=ctx, est=estimate(m, ctx, use_vision), fit="too-big", ngl="auto", mmproj_gpu=False)

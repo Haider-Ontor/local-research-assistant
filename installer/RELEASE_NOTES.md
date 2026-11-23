@@ -11,6 +11,13 @@
 
 Already using Research Assistant 1.2.0 or later? Press **⬆️ Update** in the sidebar. Older copies: run this installer.
 
+## New in 1.4.0
+- **Any AMD Radeon and any Intel Arc** runs the AI: graphics cards, and the integrated graphics of Ryzen and Core Ultra
+  processors (which share the computer's memory). Vulkan by default; AMD's ROCm and Intel's SYCL engines are options.
+- Computers with two graphics chips (e.g. integrated Radeon plus an NVIDIA card) run the AI on the stronger one
+  instead of spreading it over both.
+- The "graphics chip isn't working" warning covers AMD and Intel too, with the right driver site.
+
 ## New in 1.3.0
 - The installer is now always called `ResearchAssistant-Setup.exe`, with a direct download link at the top of the README.
 - The ✍️ Rewrite tab is no longer part of the open-source app.

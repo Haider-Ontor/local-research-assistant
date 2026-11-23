@@ -39,6 +39,22 @@
      "sha256": "abce1ade0ef7701aebb9e6ec35def26cd2c8920cfb8e344071f51b3f4867ee0a"
     }
    ],
+   "rocm": [
+    {
+     "name": "llama-b11899-bin-win-rocm-10.0-x64.zip",
+     "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11899/llama-b11899-bin-win-rocm-10.0-x64.zip",
+     "size": 264313645,
+     "sha256": "3f97aa4dfd06926c7bc92aee8371d76390c67317e5efcfb5fe18e4e2cd4d6139"
+    }
+   ],
+   "sycl": [
+    {
+     "name": "llama-b11899-bin-win-sycl-x64.zip",
+     "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11899/llama-b11899-bin-win-sycl-x64.zip",
+     "size": 155128928,
+     "sha256": "b7f6dea344e92057a4bb9b52a975f4a8685c0859afaface59442bfa1ffcb59f6"
+    }
+   ],
    "cpu": [
     {
      "name": "llama-b11899-bin-win-cpu-x64.zip",

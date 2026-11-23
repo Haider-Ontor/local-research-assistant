@@ -200,6 +200,7 @@ def engine_info():
         return json.loads((eng / BUILD_FILE).read_text("utf-8"))
     except Exception:          # installed by hand: work out what it is from its files
         build = ("cuda" if any(eng.glob("ggml-cuda*.dll")) else "vulkan" if any(eng.glob("ggml-vulkan*.dll"))
+                 else "rocm" if any(eng.glob("ggml-hip*.dll")) else "sycl" if any(eng.glob("ggml-sycl*.dll"))
                  else "cpu")
         if build == "cuda":
             build = "cuda-13" if any(eng.glob("cudart64_13*.dll")) else "cuda-12"

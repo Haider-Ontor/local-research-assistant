@@ -694,9 +694,8 @@ with st.sidebar:
     gp = gpu_problem()
     if gp:
         with st.expander("⚠️ Running on CPU (slow)", expanded=False):
-            st.write(gp + " Answers take about a minute instead of a few seconds. "
-                     "Restart the computer; if it persists, reinstall the latest NVIDIA driver (from nvidia.com or "
-                     "your laptop maker's support app). The app will use the GPU automatically once Windows sees it.")
+            st.write(gp + " Answers take about a minute instead of a few seconds. The app uses the graphics "
+                     "chip again by itself once Windows sees it working.")
 
     st.selectbox("Citation style", citations.STYLES, key="style")
     st.divider()

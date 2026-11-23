@@ -82,6 +82,16 @@ def chat_plan():
     return m, models.plan(m, config.VISION_ON)
 
 
+def _device():
+    """["--device", id] when the computer has several graphics chips (see hardware.pick_device), else []."""
+    try:
+        import hardware, models
+        d = hardware.pick_device(models.gpu(), config.ENGINE_DIR)
+    except Exception:
+        d = None
+    return ["--device", d] if d else []
+
+
 def _server_args(kind):
     exe = str(config.ENGINE_DIR / "llama-server.exe")
     common = ["--host", "127.0.0.1", "--no-webui"]
@@ -101,9 +111,9 @@ def _server_args(kind):
                 "--jinja", "-c", str(p["ctx"]), "-np", "1", "-fa", "on",
                 "--reasoning-budget", str(config.REASONING_BUDGET),
                 "--reasoning-budget-message", "I have thought about this enough. Now I will write the answer.",
-                "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", *vision, *gpu, *common]
+                "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", *vision, *gpu, *_device(), *common]
     return [exe, "-m", str(config.EMBED_MODEL_FILE), "--alias", config.EMBED_MODEL, "--port", str(config.EMBED_PORT),
-            "--embedding", "-c", "8192", "-np", "4", "-b", "2048", "-ub", "2048", "-ngl", "999", *common]
+            "--embedding", "-c", "8192", "-np", "4", "-b", "2048", "-ub", "2048", "-ngl", "999", *_device(), *common]
 
 
 def _start(kind, args):

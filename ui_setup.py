@@ -37,10 +37,11 @@ def options(vision=True):
 def hardware_box(hw):
     g = hw["gpu"]
     if g:
-        st.markdown(f"**Graphics card:** {g['name']} · {g['total'] / 1024:.0f} GB")
+        st.markdown(f"**Graphics:** {g['name']} · " + (f"integrated, shares the computer's memory (up to "
+                    f"{g['total'] / 1024:.0f} GB)" if g.get("integrated") else f"{g['total'] / 1024:.0f} GB"))
     else:
         others = ", ".join(f"{x['name']} ({x['total'] / 1024:.1f} GB)" for x in hw["gpus"]) or "none found"
-        st.markdown(f"**Graphics card:** none the AI can use (found: {others}) - it runs on the processor, which "
+        st.markdown(f"**Graphics:** none the AI can use (found: {others}) - it runs on the processor, which "
                     "works but answers take longer")
     st.markdown(f"**Memory:** {hw['ram']:.0f} GB · **Processor:** {hw['cpu']}")
     st.caption(f"AI engine for this computer: llama.cpp **{hw['engine']}** build - {hw['engine_why']}.")
@@ -57,8 +58,11 @@ def engine_box(hw, key="eng"):
     builds = list(catalog.load()["engine"]["builds"])
     with st.expander("Install or change the AI engine"):
         b = st.selectbox("Build", builds, index=builds.index(hw["engine"]), key=f"{key}_build",
-                         help="cuda-13 / cuda-12: NVIDIA cards (cuda-13 needs a driver from 2025 or later). vulkan: "
-                              "AMD, Intel and NVIDIA cards. cpu: no graphics card.")
+                         help="cuda-13 / cuda-12: NVIDIA (cuda-13 needs a driver from 2025 or later). vulkan: every AMD "
+                              "Radeon and Intel Arc - cards and integrated graphics - and NVIDIA. rocm: AMD's own "
+                              "engine for Radeon RX 6000/7000/9000 cards and Ryzen AI graphics; it can read long "
+                              "prompts faster - if it doesn't start, go back to vulkan. sycl: Intel's own engine for "
+                              "Arc, an alternative to vulkan. cpu: no graphics chip.")
         size = sum(f["size"] for f in catalog.engine_files(b))
         same = info and info["build"] == b and info["tag"] == tag
         st.caption(f"llama.cpp {tag}, {gb(size)} download." + (" Already installed." if same else "")
