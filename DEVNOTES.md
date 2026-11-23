@@ -1,4 +1,4 @@
-﻿# Developer notes (handoff)
+# Developer notes (handoff)
 
 State of the project, so work can continue in a new session without the chat history.
 
